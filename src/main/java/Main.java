@@ -17,13 +17,13 @@ public class Main {
         oriData = new OriData();
         preProcess = new PreProcess(oriData,"load");
         preData = preProcess.getPreData();
-        this.comData = new ComData(preData,2,"MIPStart");
+        this.comData = new ComData(preData,2,"");
     }
 
-    public void testLoadData() throws ParseException {
-        int desNum = 1000;
+    public void testLoadData() throws ParseException, IloException {
+        int desNum = 10000;
         int equNum = 14;
-        int arcNum = 70000;
+        int arcNum = 200000;
         int arcSize = 7;
         int[] equCap = new int[equNum];
         for (int i = 0; i < equNum; i++) {
@@ -35,12 +35,13 @@ public class Main {
         oriData = new OriData(desNum, equNum, arcNum, arcSize, equCap);
         preProcess = new PreProcess(oriData,"compute");
         preData = preProcess.getPreData();
-        this.comData = new ComData(preData,1,"");
+        this.comData = new ComData(preData,1,"default");
+        this.solve();
     }
 
     public void solve() throws IloException {
         Solver solver = new Solver(comData);
-        solver.executeModel("compute","Default",0.05);
+        solver.executeModel("compute","Lagrange",0.05);
     }
 
     public static void main(String[] args) throws ParseException, IloException {

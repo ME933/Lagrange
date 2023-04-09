@@ -1,40 +1,62 @@
 package Solve;
 
+import Data.ComData;
+
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.TreeMap;
 
 public class Solution {
 
-    public boolean verifySolution(ArrayList<int[]> conArc, HashMap<Integer,Double> xMap){
-        for (int[] conPair:conArc) {
-            int xi = xMap.get(conPair[0]).intValue();
-            int xj = xMap.get(conPair[1]).intValue();
-            if (xi + xj > 1){
-                return false;
+    public boolean verifySolution(ComData comData, HashMap<Integer,Double> xMap) {
+        for (ArrayList<ArrayList<Integer>> conSetList : comData.getConArcSet().values()) {
+            for (ArrayList<Integer> conSet: conSetList) {
+                int selectedArc = 0;
+                TreeMap<Integer, ArrayList<Integer>> conNumTree = new TreeMap<>();
+                for (int arc : conSet) {
+                    selectedArc += xMap.get(arc).intValue();
+                    if (selectedArc > 1) {
+                        return false;
+                    }
+                }
             }
         }
         return true;
     }
 
-    public HashMap<Integer,Double> transSolution(ArrayList<int[]> conArc, HashMap<Integer,Integer> eachArcConNum, HashMap<Integer,Double> xMap){
+    public HashMap<Integer,Double> transSolution(ComData comData, HashMap<Integer,Double> xMap){
         HashMap<Integer,Double> transformedX = (HashMap<Integer, Double>) xMap.clone();
-        for (int[] conPair:conArc) {
-            int i = conPair[0];
-            int j = conPair[1];
-            int xi = transformedX.get(i).intValue();
-            int xj = transformedX.get(j).intValue();
-            //释放冲突弧段
-            if (xi + xj > 1){
-                int iCon = eachArcConNum.get(i);
-                int jCon = eachArcConNum.get(j);
-                if(iCon > jCon){
-                    transformedX.put(i,0.0);
-                }else {
-                    transformedX.put(j,0.0);
+        for (ArrayList<ArrayList<Integer>> conSetList : comData.getConArcSet().values()) {
+            for (ArrayList<Integer> conSet : conSetList) {
+                //计算选用弧段数，同时维护选用弧段及其对应冲突数的treeMap
+                int selectedArc = 0;
+                TreeMap<Integer, ArrayList<Integer>> conNumTree = new TreeMap<>();
+                for (int arc : conSet) {
+                    selectedArc += transformedX.get(arc).intValue();
+                    int conNum = comData.getConflictArcNum(arc);
+                    //维护选用弧段及其对应冲突数的treeMap
+                    if (!conNumTree.containsKey(conNum)) {
+                        ArrayList<Integer> arcList = new ArrayList<>();
+                        arcList.add(arc);
+                        conNumTree.put(conNum, arcList);
+                    } else {
+                        conNumTree.get(conNum).add(arc);
+                    }
+                }
+                //释放冲突数较少的冲突弧段
+                while (selectedArc > 1) {
+                    //获取最大冲突数
+                    int maxConNum = conNumTree.lastKey();
+                    //获取最大冲突数对应弧段并更新treeMap
+                    int arcIndex = conNumTree.get(maxConNum).get(0);
+                    conNumTree.get(maxConNum).remove(arcIndex);
+                    //释放该弧段
+                    transformedX.put(arcIndex, 0.0);
                 }
             }
         }
-        if(verifySolution(conArc,transformedX)){
+        if(verifySolution(comData,transformedX)){
 //            System.out.println("成功变换出可行解。");
             return transformedX;
         }

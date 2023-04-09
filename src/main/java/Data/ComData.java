@@ -1,10 +1,13 @@
 package Data;
 
+import IntervalTree.IntervalTree;
+import IntervalTree.Interval;
+import IntervalTree.DateInterval;
 import Solve.MIPStart;
+import TimeLine.TimeLine;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
+import java.text.ParseException;
+import java.util.*;
 
 public class ComData {
     //弧段对应卫星
@@ -13,29 +16,25 @@ public class ComData {
     HashMap<Integer, String> mapArcRai;
     //弧段对应装备
     HashMap<Integer,Integer> mapArcEqu;
+    HashMap<Integer,Date[]> mapArcTime;
 
-    //冲突列表
-    ArrayList<int[]> conArc;
-    //各弧段冲突数
-    HashMap<Integer,Integer> eachArcConNum;
 
     int arcNum;
     int starNum;
     int conNum;
     //任务要求圈次数
     int taskReq;
+    int equNum;
 
     //卫星-弧段列表
     HashMap<Integer,ArrayList<Integer>> mapStarArc;
     //装备-弧段列表
     HashMap<Integer,ArrayList<Integer>> mapEquArc;
 
-    //维护子问题，结构y-[<[冲突对1]...,[冲突对n]>,<[跨卫星冲突index，跨卫星冲突弧段index ]...>]
-//    HashMap<Integer,LinkedList[]> subQue;
-//    ArrayList<Integer> crossCon;
-//    int crossNum;
-    //维护子问题，结构装备Index-装备冲突对
-    HashMap<Integer,LinkedList<Integer>> equConPair;
+    //按装备构建区间树
+    HashMap<Integer, IntervalTree<Date>> intervalTreeByDev;
+    //饱和冲突弧段集合构成的集合
+    HashMap<Integer,ArrayList<ArrayList<Integer>>> conArcSetByEqu;
 
     //热启动解x
     double[] xMIPStartList;
@@ -48,25 +47,30 @@ public class ComData {
         this.arcNum = preData.getArcNum();
         this.starNum = preData.getStarNum();
         this.conNum= preData.getConNum();
-        this.conArc = preData.getConArc();
         this.mapArcStar = preData.getMapArcStar();
         this.mapArcRai = preData.getMapArcRai();
-//        this.crossNum = preData.getCrossNum();
-//        this.subQue = preData.getSubQue();
-//        this.crossCon = preData.getCrossCon();
+        this.intervalTreeByDev = preData.getIntervalTreeByDev();
         this.mapStarArc = preData.getMapStarArc();
-        this.eachArcConNum = preData.getEachArcConNum();
         this.taskReq = taskNum;
         this.mapArcEqu = preData.getMapArcEqu();
         this.mapEquArc = preData.getMapEquArc();
-        this.equConPair = preData.getEquConPair();
+        this.mapArcTime = preData.getMapArcTime();
+        this.equNum = preData.getEquNum();
+        this.MIPStartMode = MIPStartMode;
+        this.conArcSetByEqu = preData.getConArcSetByEqu();
         if(MIPStartMode.equals("MIPStart")){
             MIPStart mipStart = new MIPStart();
             mipStart.readStartList();
             xMIPStartList = mipStart.getSelectedArcList(preData);
             yMIPStartList = mipStart.getCompletedStarList(preData);
-            this.MIPStartMode = MIPStartMode;
         }
+    }
+
+    public  HashMap<Integer,ArrayList<ArrayList<Integer>>> getConArcSet(){
+        return conArcSetByEqu;
+    }
+    public int getEquNum() {
+        return equNum;
     }
 
     public ArrayList<Integer> getEquArcList(int equIndex){
@@ -81,23 +85,37 @@ public class ComData {
         return xMIPStartList;
     }
 
-    public int getArcEqu(int arcID){
-        return mapArcEqu.get(arcID);
-    }
-    public ArrayList<Integer> getEquConList(int equIndex){
-        return new ArrayList<>(equConPair.get(equIndex));
+    public int getArcEqu(int arcIndex){
+        return mapArcEqu.get(arcIndex);
     }
 
-    public int[] getConPair(int conIndex){
-        return conArc.get(conIndex);
+    //获取弧段对应的时间
+    public Date[] getArcTime(int arcIndex){
+        return this.mapArcTime.get(arcIndex);
+    }
+
+//    public ArrayList<Integer> getEquConList(int equIndex){
+//        return new ArrayList<>(equConPair.get(equIndex));
+//    }
+
+    public ArrayList<Integer> getConArc(int arcIndex){
+        ArrayList<Integer> conArcList = new ArrayList<>();
+        Set<Interval<Date>> ids = this.intervalTreeByDev
+                .get(getArcEqu(arcIndex))
+                .query(new DateInterval(mapArcTime.get(arcIndex)[0], mapArcTime.get(arcIndex)[1], Interval.Bounded.CLOSED, String.valueOf(arcIndex)));
+        for (Interval<Date> i : ids) {
+            conArcList.add(Integer.parseInt(i.getID()));
+        }
+        return conArcList;
+    }
+
+
+    public HashMap<Integer, ArrayList<ArrayList<Integer>>> getConArcSetByEqu() {
+        return conArcSetByEqu;
     }
 
     public HashMap<Integer, ArrayList<Integer>> getMapStarArc() {
         return mapStarArc;
-    }
-
-    public HashMap<Integer, Integer> getEachArcConNum() {
-        return eachArcConNum;
     }
 
     public int getConNum() {
@@ -116,18 +134,6 @@ public class ComData {
         return taskReq;
     }
 
-//    public ArrayList<Integer> getCrossCon() {
-//        return crossCon;
-//    }
-//
-//    public int getCrossNum() {
-//        return crossNum;
-//    }
-
-    public ArrayList<int[]> getConArc() {
-        return conArc;
-    }
-
     //获取弧段对应的卫星Index
     public Integer getArcStar(int arcIndex){
         return this.mapArcStar.get(arcIndex);
@@ -138,14 +144,26 @@ public class ComData {
         return mapStarArc.get(starID);
     }
 
-//    //获取对应子问题冲突弧段
-//    public LinkedList<int[]> subProblemConPair(int starID){
-//        return subQue.get(starID)[0];
-//    }
-//
-//    //获取对应子问题松弛弧段
-//    public LinkedList<int[]> subProblemConRelax(int starID){
-//        return subQue.get(starID)[1];
-//    }
+    //获取装备对应弧段数
+    public int getEquArcNum(int equIndex){
+        return mapEquArc.get(equIndex).size();
+    }
+
+    /**
+     * @description: 获取与id弧段冲突的弧段数量
+     * @params: [id]
+     * @return: java.util.ArrayList<java.lang.String>
+     */
+    public int getConflictArcNum(int arcIndex) {
+        Date[] arcTime = getArcTime(arcIndex);
+        int equIndex = getArcEqu(arcIndex);
+        Set<Interval<Date>> ids = this.intervalTreeByDev.get(getArcEqu(arcIndex)).
+                query(new DateInterval(arcTime[0], arcTime[1], Interval.Bounded.CLOSED, String.valueOf(arcIndex)));
+        return ids.size();
+    }
+
+    public ArrayList<ArrayList<Integer>> getConSetByEqu(int equIndex) {
+        return conArcSetByEqu.get(equIndex);
+    }
 
 }

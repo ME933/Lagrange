@@ -7,6 +7,7 @@ import ilog.concert.IloLinearNumExpr;
 import ilog.concert.IloRange;
 import ilog.cplex.IloCplex;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -25,6 +26,7 @@ public class Solver {
     int arcNum;
     int starNum;
     int conNum;
+    int equNum;
     //任务要求圈次数
     int task;
 
@@ -40,6 +42,7 @@ public class Solver {
         starNum = this.comData.getStarNum();
         conNum = this.comData.getConNum();
         task = this.comData.getTask();
+        equNum = this.comData.getEquNum();
         this.initParams();
     }
 
@@ -53,7 +56,7 @@ public class Solver {
         }
         else if (solveMode.equals("Compare")) {
             this.defaultSolve(MIPGap);
-            this.Lagrange();
+//            this.Lagrange();
         }
     }
 
@@ -104,13 +107,13 @@ public class Solver {
     //添加冲突约束
     private void addResCon() throws IloException {
         for (int i = 0; i < conNum; i++) {
-            int[] conPair = comData.getConArc().get(i);
-            resCon[i] = cplex.addLe(cplex.sum(x[conPair[0]], x[conPair[1]]),1);
+            ArrayList<Integer> conList = comData.getConArc(i);
+//            resCon[i] = cplex.addLe(cplex.sum(x[conPair[0]], x[conPair[1]]),1);
             resCon[i].setName("resCon_" + i);
         }
     }
 
-    //添加目标约束
+    //添加卫星约束
     private void addResStar() throws IloException {
         //遍历卫星
         for (int i = 0; i < starNum; i++) {
@@ -151,6 +154,7 @@ public class Solver {
             cplex.setParam(IloCplex.Param.Emphasis.MIP, 1);
         }
         cplex.setParam (IloCplex.Param.MIP.Tolerances.MIPGap,MIPGap);
+        comData = null;
         cplex.solve();
         System.out.println("目标函数值：" + cplex.getObjValue());
     }
@@ -158,7 +162,7 @@ public class Solver {
     public void Lagrange() throws IloException {
 //        cplex.solve();
 //        System.out.println("原问题目标函数值：" + cplex.getObjValue());
-        System.out.println("共有冲突对:"+comData.getConArc().size());
+//        System.out.println("共有冲突对:"+comData.getConArc().size());
 //        System.out.println("跨目标冲突对:"+comData.getCrossNum());
 //        int crossNum = comData.getCrossNum();
         // 定义拉格朗日乘子初始值（随机生成）
@@ -173,48 +177,47 @@ public class Solver {
         double bestUB = Double.POSITIVE_INFINITY; // 最优上界
 
         // 开始循环求解拉格朗日子问题
-        SubProblem[] subProblems = new SubProblem[starNum];
+        SubProblem[] subProblems = new SubProblem[equNum];
         //建立子问题
-//        for (int i = 0; i < starNum; i++) {
-//            SubProblem subCplex = new SubProblem(i, task, comData.subProblemConPair(i), comData.getStarArc(i));
-//            subProblems[i] = subCplex;
-//        }
+        for (int i = 0; i < equNum; i++) {
+            SubProblem subCplex = new SubProblem(i, comData);
+            subProblems[i] = subCplex;
+        }
         int ubNonImproveCnt = 0;
         while (iter < maxIter + 1 && bestUB - bestLB > epsilon) {
 //        while (iter < maxIter) {
-            double LB = 0;
+            double LB;
             double UB = 0;
+            StarSubProblem starSubProblem = new StarSubProblem(task,lambda);
             HashMap<Integer, Double> xMap = new HashMap<>();
-            for (int i = 0; i < starNum; i++) {
+            for (int i = 0; i < equNum; i++) {
                 //建立子问题松弛目标
-//                subProblems[i].creatObj(comData.subProblemConRelax(i),lambda);
+                subProblems[i].creatObj(lambda);
                 if (subProblems[i].solve()){
                     //获取当前上界（目标函数值）
                     UB += subProblems[i].getObjective();
                     //计算当前下界（原问题目标函数值）
-                    LB += subProblems[i].getResult();
 //                    System.out.println("y"+i+":"+subProblems[i].getResult());
                     //获取当前解
                     xMap = subProblems[i].getVariable(xMap);
-//                    subProblems[i].saveModel();
+                    subProblems[i].saveModel();
                 }
             }
-            UB += Arrays.stream(lambda).sum();
-            if (iter % 10 == 0){
-                System.out.println("Iteration " + iter + ": LB=" + LB + ", UB=" + UB + ", bestLB=" + bestLB + ", bestUB=" + bestUB);
-            }
+            LB = starSubProblem.getObjValue();
+            UB += starSubProblem.getRelaxValue();
+            System.out.println("Iteration " + iter + ": LB=" + LB + ", UB=" + UB + ", bestLB=" + bestLB + ", bestUB=" + bestUB);
             //更新拉格朗日乘子（使用次梯度算法）
-            DualProblem dualProblem = new DualProblem();
+            DualProblem dualProblem = new DualProblem(comData);
             //计算次梯度
-            dualProblem.computeSubGradients(xMap, comData.getConArc(), comData.getCrossCon(), comData.getCrossNum());
+            dualProblem.computeSubGradients(xMap, starSubProblem.getRelaxYValue());
             if(dualProblem.verifySolution()){
                 if (LB > bestLB) {
                     bestLB = LB; // 更新最优下界
                 }
             }else {
-                Solve.Solve.Solution solution = new Solve.Solve.Solution();
+                Solve.Solution solution = new Solve.Solution();
                 //对解进行变换
-                HashMap<Integer,Double> transX = solution.transSolution(comData.getConArc(),comData.getEachArcConNum(),xMap);
+                HashMap<Integer,Double> transX = solution.transSolution(comData, xMap);
                 int transLB = solution.getObjectiveValue(transX,comData.getMapStarArc(),task);
                 if (transLB > bestLB) {
                     bestLB = transLB; // 更新最优下界
@@ -232,15 +235,15 @@ public class Solver {
         // 输出最终结果
         System.out.println("Final result: bestLB=" + bestLB + ", bestUB=" + bestUB);
         HashMap<Integer, Double> xMap = new HashMap<>();
-        Solve.Solve.Solution solution = new Solution();
+        Solve.Solution solution = new Solution();
         for (SubProblem subProblem:subProblems) {
             xMap = subProblem.getVariable(xMap);
         }
-        if (solution.verifySolution(comData.getConArc(),xMap)){
+        if (solution.verifySolution(comData, xMap)){
             System.out.println("松弛解满足原问题约束。");
         }else {
             System.out.println("松弛解不满足原问题约束。");
-            HashMap<Integer,Double> transX = solution.transSolution(comData.getConArc(),comData.getEachArcConNum(),xMap);
+            HashMap<Integer,Double> transX = solution.transSolution(comData, xMap);
             System.out.println(solution.getObjectiveValue(transX,comData.getMapStarArc(),task));
         }
 

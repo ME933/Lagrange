@@ -1,18 +1,27 @@
 package Solve;
 
+import Data.ComData;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class DualProblem {
-    Double[] subGradients;
+    double[] subGradients;
+    ComData comData;
+
+    public DualProblem(ComData comData){
+        this.comData = comData;
+    }
 
     //计算次梯度
-    public void computeSubGradients(HashMap<Integer, Double> variable , ArrayList<int[]> conArc, ArrayList<Integer> crossCon ,int crossNum){
-        subGradients = new Double[crossNum];
-        for (int i = 0; i < crossNum; i++) {
-            int xi = conArc.get(crossCon.get(i))[0];
-            int xj = conArc.get(crossCon.get(i))[1];
-            subGradients[i] = variable.get(xi) + variable.get(xj) - 1;
+    public void computeSubGradients(HashMap<Integer, Double> variable, double[] y){
+        subGradients = new double[comData.getEquNum()];
+        for (int i = 0; i < comData.getEquNum(); i++) {
+            for(int j = 0; j < comData.getEquArcList(i).size(); j++){
+                int arcIndex = comData.getEquArcList(i).get(j);
+                subGradients[i] += variable.get(arcIndex);
+            }
+            subGradients[i] += y[i];
         }
     }
 

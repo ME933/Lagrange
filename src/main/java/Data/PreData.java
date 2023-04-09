@@ -1,5 +1,8 @@
 package Data;
 
+import IntervalTree.IntervalTree;
+import TimeLine.TimeLine;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -33,27 +36,35 @@ public class PreData {
     //卫星，装备，弧段列表
     HashMap<Integer,HashMap<Integer,ArrayList<Integer>>> mapStarEquArc;
     //冲突列表
-    ArrayList<int[]> conArc;
+//    ArrayList<int[]> conArc;
     //各弧段冲突数
     HashMap<Integer,Integer> eachArcConNum;
     //维护子问题，结构y-[<[冲突对1]...,[冲突对n]>,<[跨卫星冲突index，跨卫星冲突弧段index ]...>]
 //    HashMap<Integer, LinkedList[]> subQue;
 //    ArrayList<Integer> crossCon;
     //维护子问题，结构装备Index-装备冲突对
-    HashMap<Integer,LinkedList<Integer>> equConPair;
+//    HashMap<Integer,LinkedList<Integer>> equConPair;
+    //按装备构建区间树
+    HashMap<Integer, IntervalTree<Date>> intervalTreeByDev;
+    HashMap<Integer,ArrayList<ArrayList<Integer>>> conArcSetByEqu;
+    //时间线
+    TimeLine[] timeLineList;
 
     int arcNum;
     int starNum;
     int conNum;
     int crossNum;
+    int equNum;
 
-    public PreData(ArrayList<Integer> inStarList,
+    public PreData(HashMap<Integer,ArrayList<ArrayList<Integer>>> conArcSetByEqu,
+                   TimeLine[] timeLineList,
+                   ArrayList<Integer> inStarList,
                    ArrayList<Integer> inEquList,
                    ArrayList<Integer> inArcList,
                    HashMap<Integer,ArrayList<Integer>> inMapStarArc,
                    HashMap<Integer,ArrayList<Integer>> inMapEquArc,
                    HashMap<Integer,HashMap<Integer,ArrayList<Integer>>> inMapStarEquArc,
-                   ArrayList<int[]> inConArc,
+                   HashMap<Integer, IntervalTree<Date>> intervalTreeByDev,
                    HashMap<Integer,Integer> inEachArcConNum,
                    HashMap<Integer,Integer> inStarIndexMap,
                    HashMap<Integer,Integer> inEquIndexMap,
@@ -61,8 +72,9 @@ public class PreData {
                    HashMap<Integer,Integer> inMapArcStar,
                    HashMap<Integer,Integer> inMapArcEqu,
                    HashMap<Integer,Date[]> inMapArcTime,
-                   HashMap<Integer, String> inMapArcRai,
-                   HashMap<Integer,LinkedList<Integer>> inEquConPair){
+                   HashMap<Integer, String> inMapArcRai){
+        //按装备构建区间树
+        this.intervalTreeByDev =  intervalTreeByDev;;
         this.starList = inStarList;
         this.eachArcConNum = inEachArcConNum;
         this.equList = inEquList;
@@ -70,7 +82,7 @@ public class PreData {
         this.mapStarArc = inMapStarArc;
         this.mapEquArc = inMapEquArc;
         this.mapStarEquArc = inMapStarEquArc;
-        this.conArc = inConArc;
+//        this.conArc = inConArc;
         this.starIndexMap = inStarIndexMap;
         this.equIndexMap = inEquIndexMap;
         this.arcIndexMap = inArcIndexMap;
@@ -80,17 +92,35 @@ public class PreData {
         this.mapArcEqu = inMapArcEqu;
         this.mapArcTime = inMapArcTime;
         this.mapArcRai = inMapArcRai;
-        this.equConPair = inEquConPair;
+        this.timeLineList = timeLineList;
+//        this.equConPair = inEquConPair;
 //        this.crossNum = inCrossNum;
 //        this.subQue = inSubQue;
 //        this.crossCon = inCrossCon;
-        conNum = 0;
-        conNum = conArc.size();
+        this.equNum = equList.size();
+        this.conArcSetByEqu = conArcSetByEqu;
+
     }
 
-    public HashMap<Integer, LinkedList<Integer>> getEquConPair() {
-        return equConPair;
+    public HashMap<Integer, ArrayList<ArrayList<Integer>>> getConArcSetByEqu() {
+        return conArcSetByEqu;
     }
+
+    public TimeLine[] getTimeLineList() {
+        return timeLineList;
+    }
+
+    public HashMap<Integer, Date[]> getMapArcTime() {
+        return mapArcTime;
+    }
+
+    public HashMap<Integer, IntervalTree<Date>> getIntervalTreeByDev() {
+        return intervalTreeByDev;
+    }
+
+//    public HashMap<Integer, LinkedList<Integer>> getEquConPair() {
+//        return equConPair;
+//    }
 
     public HashMap<Integer, Integer> getEachArcConNum() {
         return eachArcConNum;
@@ -129,6 +159,10 @@ public class PreData {
         return arcNum;
     }
 
+    public int getEquNum(){
+        return equNum;
+    }
+
     public HashMap<Integer, Integer> getMapArcStar() {
         return mapArcStar;
     }
@@ -157,9 +191,9 @@ public class PreData {
     }
 
     //获取冲突列表
-    public ArrayList<int[]> getConArc() {
-        return conArc;
-    }
+//    public ArrayList<int[]> getConArc() {
+//        return conArc;
+//    }
 
     //获取弧段对应的卫星Index
     public Integer getArcStar(int arcIndex){

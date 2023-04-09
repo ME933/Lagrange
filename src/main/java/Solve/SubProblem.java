@@ -1,6 +1,7 @@
 package Solve;
 
 import Data.ComData;
+import TimeLine.TimeLine;
 import ilog.concert.IloException;
 import ilog.concert.IloIntVar;
 import ilog.concert.IloLinearNumExpr;
@@ -9,6 +10,7 @@ import ilog.cplex.IloCplex;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 public class SubProblem {
     IloCplex cplex;
@@ -22,31 +24,34 @@ public class SubProblem {
     int equIndex;
 
     public SubProblem(int equIndex, ComData comData) throws IloException {
-        int conNum;
-        int arcNum;
+        int arcNum = comData.getEquArcNum(equIndex);
         this.equIndex = equIndex;
         this.comData = comData;
         this.arc = comData.getEquArcList(equIndex);
-        ArrayList<Integer> conList = comData.getEquConList(equIndex);
-        conNum = conList.size();
+//        ArrayList<Integer> conList = comData.getEquConList(equIndex);
         cplex = new IloCplex();
         cplex.setOut(null);
         this.creatArcMap();
         //初始化时，建立模型约束，添加对应装备冲突约束
-        arcNum = arc.size();
-        IloRange[] resCon = new IloRange[conNum];
         x = cplex.intVarArray(arcNum, 0, 1);
-
         //命名决策变量
         for (int i = 0; i < arcNum; i++) {
             x[i].setName("x_" + getGlobalIndex(i));
         }
-
         //建立冲突约束
-        for (int i = 0; i < conNum; i++) {
-            int[] conPair = comData.getConPair(conList.get(i));
-            resCon[i] = cplex.addLe(cplex.sum(x[getLocalIndex(conPair[0])], x[getLocalIndex(conPair[1])]),1);
-            resCon[i].setName("subResCon_" + i);
+        this.creatConRes(equIndex);
+    }
+
+    //插入冲突约束
+    private void creatConRes(int equIndex) throws IloException {
+        ArrayList<ArrayList<Integer>> conSet = comData.getConSetByEqu(equIndex);
+        //添加冲突集
+        for (ArrayList<Integer> conList: conSet) {
+            IloLinearNumExpr lhs = cplex.linearNumExpr();
+            for (int arcIndex:conList) {
+                lhs.addTerm(1, x[getLocalIndex(arcIndex)]);
+            }
+            cplex.addRange(0, lhs ,1);
         }
     }
 
@@ -56,7 +61,7 @@ public class SubProblem {
         cplex.remove(cplex.getObjective());
         IloLinearNumExpr lhs = cplex.linearNumExpr();
         for (int arc:comData.getEquArcList(equIndex)) {
-            lhs.addTerm(lambda[equIndex],x[getLocalIndex(arc)]);
+            lhs.addTerm(lambda[comData.getArcStar(arc)],x[getLocalIndex(arc)]);
         }
         cplex.addMaximize(lhs);
     }
