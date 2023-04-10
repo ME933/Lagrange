@@ -78,7 +78,7 @@ public class PreProcess {
     public PreData getPreData() throws ParseException {
         this.storeList();
         this.generateMap();
-        this.generateCon();
+//        this.generateCon();
         this.creatTimeLine();
         this.preData = new PreData(conArcSetByEqu, timeLineList, starList, equList, arcList, mapStarArc, mapEquArc, mapStarEquArc, intervalTreeByDev, eachArcConNum, starIndexMap, equIndexMap, arcIndexMap, mapArcStar, mapArcEqu, mapArcTime, mapArcRai);
         return preData;
@@ -217,6 +217,7 @@ public class PreProcess {
     //若不包含冲突文件，则建立冲突信息并写入文件
     //若包含冲突文件，则读取冲突文件
 
+    /*
     private void generateCon() {
         ConJson conJson = new ConJson();
         File file = new File("File/conArc.json"); // 创建一个File对象，指定同目录下的文件名
@@ -247,6 +248,7 @@ public class PreProcess {
         }
 //        this.creatQue();
     }
+    */
 
     private void buildIntervalTreeByDev(int arcIndex) {
         int equIndex = mapArcEqu.get(arcIndex);

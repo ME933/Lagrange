@@ -3,9 +3,12 @@ import Data.ComData;
 import Data.OriData;
 import Data.PreData;
 import Solve.Solver;
+import Tool.TimeTool;
 import ilog.concert.IloException;
 
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Main {
     ComData comData;
@@ -46,9 +49,18 @@ public class Main {
 
     public static void main(String[] args) throws ParseException, IloException {
         Main main = new Main();
+        TimeTool timeTool = new TimeTool();
+        timeTool.addName("总计");
+        timeTool.addName("预处理");
+        timeTool.addStartTime("总计");
+        timeTool.addStartTime("预处理");
         main.loadData();
+        timeTool.addEndTime("预处理");
+        timeTool.printTime("预处理");
 //        main.testLoadData();
         main.solve();
+        timeTool.addEndTime("总计");
+        timeTool.printTime("总计");
         System.out.println("Done!");
     }
 }

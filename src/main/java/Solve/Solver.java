@@ -1,6 +1,8 @@
 package Solve;
 
+import Tool.DrawChart;
 import Data.ComData;
+import Tool.TimeTool;
 import ilog.concert.IloException;
 import ilog.concert.IloIntVar;
 import ilog.concert.IloLinearNumExpr;
@@ -35,6 +37,8 @@ public class Solver {
     double epsilon; // 终止条件阈值
     double stepSizeInit; // 初始步长因子
 
+    DrawChart drawChart;
+
 
     public Solver(ComData inComData){
         this.comData = inComData;
@@ -47,6 +51,7 @@ public class Solver {
     }
 
     public void executeModel(String modelMode,String solveMode,double MIPGap) throws IloException {
+        drawChart = new DrawChart();
         cplex = new IloCplex();
         this.iniSolver(modelMode);
         if(solveMode.equals("Default")){
@@ -65,7 +70,7 @@ public class Solver {
         if(mode.equals("load")){
             System.out.println("加载model.lp文件。");
             cplex.importModel("File/model.lp");
-        } else if (mode.equals("compute")) {
+        } else if (mode.equals("compute") || mode.equals("save")) {
             cplex.setParam(IloCplex.Param.Preprocessing.Presolve, false);
             //创建决策变量
             x = cplex.intVarArray(arcNum, 0, 1);
@@ -88,8 +93,10 @@ public class Solver {
             //添加约束
             this.addResCon();
             this.addResStar();
-            cplex.exportModel("File/model.lp");
-            System.out.println("初始化模型成功，存入model.lp文件。");
+            if(mode.equals("save")){
+                cplex.exportModel("File/model.lp");
+                System.out.println("初始化模型成功，存入model.lp文件。");
+            }
         }else {
             System.out.println("未知model指令。");
         }
@@ -160,17 +167,12 @@ public class Solver {
     }
 
     public void Lagrange() throws IloException {
-//        cplex.solve();
-//        System.out.println("原问题目标函数值：" + cplex.getObjValue());
-//        System.out.println("共有冲突对:"+comData.getConArc().size());
-//        System.out.println("跨目标冲突对:"+comData.getCrossNum());
-//        int crossNum = comData.getCrossNum();
+        TimeTool timeTool = new TimeTool();
+        timeTool.addName(new String[]{"建立子问题", "求解松弛问题", "更新拉格朗日乘子","修复解"});
         // 定义拉格朗日乘子初始值（随机生成）
         double[] lambda = new double[starNum];
         for (int i = 0; i < starNum; i++) {
-//            lambda[i] = Math.random();
             lambda[i] = 0.001;
-            //System.out.println("lambda[" + i + "]=" + lambda[i]);
         }
         // 定义当前迭代次数和最优目标值
         int iter = 0; // 当前迭代次数
@@ -180,11 +182,12 @@ public class Solver {
         // 开始循环求解拉格朗日子问题
         SubProblem[] subProblems = new SubProblem[equNum];
         //建立子问题
+        timeTool.addStartTime("建立子问题");
         for (int i = 0; i < equNum; i++) {
             SubProblem subCplex = new SubProblem(i, comData);
             subProblems[i] = subCplex;
         }
-        int ubNonImproveCnt = 0;
+        timeTool.addEndTime("建立子问题");
         while (iter < maxIter + 1 && bestUB - bestLB > epsilon) {
 //        while (iter < maxIter) {
             double LB;
@@ -193,60 +196,60 @@ public class Solver {
             HashMap<Integer, Double> xMap = new HashMap<>();
             for (int i = 0; i < equNum; i++) {
                 //建立子问题松弛目标
+                timeTool.addStartTime("建立子问题");
                 subProblems[i].creatObj(lambda);
+                timeTool.addEndTime("建立子问题");
+                timeTool.addStartTime("求解松弛问题");
                 if (subProblems[i].solve()){
                     //获取当前上界（松弛目标函数值）
                     UB += subProblems[i].getObjective();
-                    //计算当前下界（原问题目标函数值）
-//                    System.out.println("y"+i+":"+subProblems[i].getResult());
                     //获取当前解
                     xMap = subProblems[i].getVariable(xMap);
-                    subProblems[i].saveModel();
+//                    subProblems[i].saveModel();
                 }
+                timeTool.addEndTime("求解松弛问题");
             }
+            //计算下界
             LB = starSubProblem.getObjValue();
             UB += starSubProblem.getRelaxValue();
+            timeTool.addStartTime("更新拉格朗日乘子");
             //更新拉格朗日乘子（使用次梯度算法）
             DualProblem dualProblem = new DualProblem(comData);
             //计算次梯度
             dualProblem.computeSubGradients(xMap, starSubProblem.getRelaxYValue(), task);
-//            if (LB > bestLB) {
-//                    bestLB = LB; // 更新最优下界
-//            }
+            timeTool.addEndTime("更新拉格朗日乘子");
             double transLB = 0;
+            //若满足卫星弧段约束，则判断后更新下界
+            timeTool.addStartTime("修复解");
             if(dualProblem.verifySolution()){
                 if (LB > bestLB) {
                     bestLB = LB; // 更新最优下界
                     transLB = LB;
                 }
-            }else {
+            }
+            //若不满足卫星弧段约束，则进行LocalSearch，得到修复解
+            else {
                 Solve.Solution solution = new Solve.Solution();
-                //对解进行变换
-                if(!solution.verifySolution(comData,xMap)){
-                    HashMap<Integer,Double> transX = solution.transSolution(comData, xMap);
-                    transLB = solution.getObjectiveValue(transX,comData.getMapStarArc(),task);
-                    System.out.println("             不符合冲突约束,进行变换.");
-                }
-                else {
-                    transLB = solution.getObjectiveValue(xMap,comData.getMapStarArc(),task);
-                }
-//                System.out.println("             原问题解目标函数值：" + transLB);
+                transLB = solution.getObjectiveValue(xMap,comData.getMapStarArc(),task);
                 if (transLB > bestLB) {
                     bestLB = transLB; // 更新最优下界
                 }
             }
+            timeTool.addEndTime("修复解");
+            drawChart.addData(transLB,UB);
             System.out.println("Iteration " + iter + ": LB=" + LB + ", fixedLB=" + transLB + ", UB=" + UB + ", bestLB=" + bestLB + ", bestUB=" + bestUB);
             if (UB < bestUB) {
                 bestUB = UB; // 更新最优上界
             }
+            timeTool.addStartTime("更新拉格朗日乘子");
             double stepSize = dualProblem.stepSize(bestLB, UB);
             lambda = dualProblem.updateLambda(lambda,stepSize);
-//            System.out.println("lambda平均值："+ Arrays.stream(lambda).average().getAsDouble());
-            //找到可行解
+            timeTool.addEndTime("更新拉格朗日乘子");
             iter++; // 更新迭代次数
         }
         // 输出最终结果
         System.out.println("Final result: bestLB=" + bestLB + ", bestUB=" + bestUB);
+        timeTool.printAllTime();
         HashMap<Integer, Double> xMap = new HashMap<>();
         Solve.Solution solution = new Solution();
         for (SubProblem subProblem:subProblems) {
@@ -260,13 +263,16 @@ public class Solver {
             HashMap<Integer,Double> transX = solution.transSolution(comData, xMap);
             System.out.println(solution.getObjectiveValue(transX,comData.getMapStarArc(),task));
         }
-
         // 关闭cplex对象
         cplex.end();
     }
 
+    public void draw(){
+        drawChart.draw();
+    }
+
     public void initParams(){
-        this.maxIter = 100; // 最大迭代次数
+        this.maxIter = 10; // 最大迭代次数
         this.epsilon = 0.0001 * starNum; // 终止条件阈值
         this.stepSizeInit = -1.0 / Math.sqrt(2 * arcNum); // 初始步长因子
     }
@@ -275,4 +281,5 @@ public class Solver {
         this.maxIter = maxIter; // 最大迭代次数
         this.epsilon = epsilon; // 终止条件阈值
     }
+
 }

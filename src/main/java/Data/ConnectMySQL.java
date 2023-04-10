@@ -27,7 +27,8 @@ public class ConnectMySQL {
             Class.forName(JDBC_DRIVER);
 
             // 打开链接
-            System.out.println("连接数据库...");
+
+//            System.out.println("连接数据库...");
             conn = DriverManager.getConnection(DB_URL,USER,PASS);
 
             // 执行查询
@@ -94,7 +95,7 @@ public class ConnectMySQL {
                 se.printStackTrace();
             }
         }
-        System.out.println("连接数据库结束!");
+        System.out.println("连接数据库成功!");
     }
 
     public ArrayList<String> getOriDataStar() {

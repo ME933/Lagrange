@@ -146,15 +146,19 @@ public class ComData {
         return mapStarArc.get(starID);
     }
 
-    //获取装备对应弧段数
+    /**
+     * @description: 获取与装备对应的弧段数量
+     * @param equIndex 装备ID
+     * @return 对应ID装备的弧段数量
+     */
     public int getEquArcNum(int equIndex){
         return mapEquArc.get(equIndex).size();
     }
 
     /**
      * @description: 获取与id弧段冲突的弧段数量
-     * @params: [id]
-     * @return: java.util.ArrayList<java.lang.String>
+     * @param arcIndex 弧段ID
+     * @return 弧段ID的冲突数量
      */
     public int getConflictArcNum(int arcIndex) {
         if (!eachArcConNum.containsKey(arcIndex)){
@@ -169,6 +173,11 @@ public class ComData {
         }
     }
 
+    /**
+     * @description: 获取装备对应的饱和冲突集
+     * @param equIndex 装备ID
+     * @return 饱和冲突集构成的List
+     */
     public ArrayList<ArrayList<Integer>> getConSetByEqu(int equIndex) {
         return conArcSetByEqu.get(equIndex);
     }
