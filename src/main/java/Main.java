@@ -21,10 +21,10 @@ public class Main {
     }
 
     public void testLoadData() throws ParseException, IloException {
-        int desNum = 10000;
-        int equNum = 14;
-        int arcNum = 200000;
-        int arcSize = 7;
+        int starNum = 5;
+        int equNum = 2;
+        int arcNum = 20;
+        int arcSize = 240;
         int[] equCap = new int[equNum];
         for (int i = 0; i < equNum; i++) {
             equCap[i] = 1;
@@ -32,10 +32,10 @@ public class Main {
         OriData oriData;
         PreData preData;
         PreProcess preProcess;
-        oriData = new OriData(desNum, equNum, arcNum, arcSize, equCap);
+        oriData = new OriData(starNum, equNum, arcNum, arcSize, equCap);
         preProcess = new PreProcess(oriData,"compute");
         preData = preProcess.getPreData();
-        this.comData = new ComData(preData,1,"default");
+        this.comData = new ComData(preData,3,"default");
         this.solve();
     }
 

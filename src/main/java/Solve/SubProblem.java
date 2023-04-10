@@ -34,27 +34,24 @@ public class SubProblem {
         this.creatArcMap();
         //初始化时，建立模型约束，添加对应装备冲突约束
         x = cplex.intVarArray(arcNum, 0, 1);
+        int conSize = comData.getConSetByEqu(equIndex).size();
+        IloRange[] resCon = new IloRange[conSize];
+        ArrayList<ArrayList<Integer>> conSet = comData.getConSetByEqu(equIndex);
         //命名决策变量
         for (int i = 0; i < arcNum; i++) {
             x[i].setName("x_" + getGlobalIndex(i));
         }
         //建立冲突约束
-        this.creatConRes(equIndex);
-    }
-
-    //插入冲突约束
-    private void creatConRes(int equIndex) throws IloException {
-        ArrayList<ArrayList<Integer>> conSet = comData.getConSetByEqu(equIndex);
-        //添加冲突集
-        for (ArrayList<Integer> conList: conSet) {
+        for (int i = 0; i < conSize; i++) {
             IloLinearNumExpr lhs = cplex.linearNumExpr();
+            ArrayList<Integer> conList = conSet.get(i);
             for (int arcIndex:conList) {
                 lhs.addTerm(1, x[getLocalIndex(arcIndex)]);
             }
-            cplex.addRange(0, lhs ,1);
+            resCon[i] = cplex.addLe(lhs,1);
+            resCon[i].setName("c_" + i);
         }
     }
-
 
     public void creatObj(double[] lambda) throws IloException {
         //将任务约束加入目标函数

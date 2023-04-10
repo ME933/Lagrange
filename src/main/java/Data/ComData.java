@@ -17,6 +17,7 @@ public class ComData {
     //弧段对应装备
     HashMap<Integer,Integer> mapArcEqu;
     HashMap<Integer,Date[]> mapArcTime;
+    HashMap<Integer,Integer> eachArcConNum;
 
 
     int arcNum;
@@ -58,6 +59,7 @@ public class ComData {
         this.equNum = preData.getEquNum();
         this.MIPStartMode = MIPStartMode;
         this.conArcSetByEqu = preData.getConArcSetByEqu();
+        this.eachArcConNum = new HashMap<>();
         if(MIPStartMode.equals("MIPStart")){
             MIPStart mipStart = new MIPStart();
             mipStart.readStartList();
@@ -155,11 +157,16 @@ public class ComData {
      * @return: java.util.ArrayList<java.lang.String>
      */
     public int getConflictArcNum(int arcIndex) {
-        Date[] arcTime = getArcTime(arcIndex);
-        int equIndex = getArcEqu(arcIndex);
-        Set<Interval<Date>> ids = this.intervalTreeByDev.get(getArcEqu(arcIndex)).
-                query(new DateInterval(arcTime[0], arcTime[1], Interval.Bounded.CLOSED, String.valueOf(arcIndex)));
-        return ids.size();
+        if (!eachArcConNum.containsKey(arcIndex)){
+            Date[] arcTime = getArcTime(arcIndex);
+            Set<Interval<Date>> ids = this.intervalTreeByDev.get(getArcEqu(arcIndex)).
+                    query(new DateInterval(arcTime[0], arcTime[1], Interval.Bounded.CLOSED, String.valueOf(arcIndex)));
+            int num = ids.size();
+            eachArcConNum.put(arcIndex, num);
+            return num;
+        }else {
+            return eachArcConNum.get(arcIndex);
+        }
     }
 
     public ArrayList<ArrayList<Integer>> getConSetByEqu(int equIndex) {

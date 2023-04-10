@@ -88,15 +88,17 @@ public class TimeLine {
     public ArrayList<ArrayList<Integer>>  searchTimeline(){
         ArrayList<ArrayList<Integer>> conArcList = new ArrayList<>();
         HashSet<Integer> conArcSet = new HashSet<>();
-        for (int i = 0; i < timeline.size(); i++){
+        for (int i = 0; i < timeline.size()-1; i++){
             TimePoint timePoint = timeline.get(i);
             if(timePoint.getPointType().equals("start")){
                 update = true;
                 conArcSet.add(timePoint.getArcIndex());
             }else if(timePoint.getPointType().equals("end")){
+                if(update && conArcSet.size() > 1){
+                    ArrayList<Integer> tempSet = new ArrayList<>(conArcSet);
+                    conArcList.add(tempSet);
+                }
                 update = false;
-                ArrayList<Integer> tempSet = new ArrayList<>(conArcSet);
-                conArcList.add(tempSet);
                 conArcSet.remove(timePoint.getArcIndex());
             }
         }

@@ -168,7 +168,8 @@ public class Solver {
         // 定义拉格朗日乘子初始值（随机生成）
         double[] lambda = new double[starNum];
         for (int i = 0; i < starNum; i++) {
-            lambda[i] = 0;
+//            lambda[i] = Math.random();
+            lambda[i] = 0.001;
             //System.out.println("lambda[" + i + "]=" + lambda[i]);
         }
         // 定义当前迭代次数和最优目标值
@@ -194,7 +195,7 @@ public class Solver {
                 //建立子问题松弛目标
                 subProblems[i].creatObj(lambda);
                 if (subProblems[i].solve()){
-                    //获取当前上界（目标函数值）
+                    //获取当前上界（松弛目标函数值）
                     UB += subProblems[i].getObjective();
                     //计算当前下界（原问题目标函数值）
 //                    System.out.println("y"+i+":"+subProblems[i].getResult());
@@ -205,24 +206,36 @@ public class Solver {
             }
             LB = starSubProblem.getObjValue();
             UB += starSubProblem.getRelaxValue();
-            System.out.println("Iteration " + iter + ": LB=" + LB + ", UB=" + UB + ", bestLB=" + bestLB + ", bestUB=" + bestUB);
             //更新拉格朗日乘子（使用次梯度算法）
             DualProblem dualProblem = new DualProblem(comData);
             //计算次梯度
-            dualProblem.computeSubGradients(xMap, starSubProblem.getRelaxYValue());
+            dualProblem.computeSubGradients(xMap, starSubProblem.getRelaxYValue(), task);
+//            if (LB > bestLB) {
+//                    bestLB = LB; // 更新最优下界
+//            }
+            double transLB = 0;
             if(dualProblem.verifySolution()){
                 if (LB > bestLB) {
                     bestLB = LB; // 更新最优下界
+                    transLB = LB;
                 }
             }else {
                 Solve.Solution solution = new Solve.Solution();
                 //对解进行变换
-                HashMap<Integer,Double> transX = solution.transSolution(comData, xMap);
-                int transLB = solution.getObjectiveValue(transX,comData.getMapStarArc(),task);
+                if(!solution.verifySolution(comData,xMap)){
+                    HashMap<Integer,Double> transX = solution.transSolution(comData, xMap);
+                    transLB = solution.getObjectiveValue(transX,comData.getMapStarArc(),task);
+                    System.out.println("             不符合冲突约束,进行变换.");
+                }
+                else {
+                    transLB = solution.getObjectiveValue(xMap,comData.getMapStarArc(),task);
+                }
+//                System.out.println("             原问题解目标函数值：" + transLB);
                 if (transLB > bestLB) {
                     bestLB = transLB; // 更新最优下界
                 }
             }
+            System.out.println("Iteration " + iter + ": LB=" + LB + ", fixedLB=" + transLB + ", UB=" + UB + ", bestLB=" + bestLB + ", bestUB=" + bestUB);
             if (UB < bestUB) {
                 bestUB = UB; // 更新最优上界
             }
@@ -240,7 +253,8 @@ public class Solver {
             xMap = subProblem.getVariable(xMap);
         }
         if (solution.verifySolution(comData, xMap)){
-            System.out.println("松弛解满足原问题约束。");
+            System.out.println("松弛解满足原问题约束,目标函数值:"+solution.getObjectiveValue(xMap,comData.getMapStarArc(),task));
+            System.out.println("选用弧段数量:"+solution.getArcNum(xMap));
         }else {
             System.out.println("松弛解不满足原问题约束。");
             HashMap<Integer,Double> transX = solution.transSolution(comData, xMap);
@@ -253,7 +267,7 @@ public class Solver {
 
     public void initParams(){
         this.maxIter = 100; // 最大迭代次数
-        this.epsilon = 0.001 * starNum; // 终止条件阈值
+        this.epsilon = 0.0001 * starNum; // 终止条件阈值
         this.stepSizeInit = -1.0 / Math.sqrt(2 * arcNum); // 初始步长因子
     }
 

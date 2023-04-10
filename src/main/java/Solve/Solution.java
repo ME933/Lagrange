@@ -25,6 +25,14 @@ public class Solution {
         return true;
     }
 
+    public int getArcNum(HashMap<Integer,Double> xMap){
+        int res = 0;
+        for (Double x: xMap.values()) {
+            res += x.intValue();
+        }
+        return res;
+    }
+
     public HashMap<Integer,Double> transSolution(ComData comData, HashMap<Integer,Double> xMap){
         HashMap<Integer,Double> transformedX = (HashMap<Integer, Double>) xMap.clone();
         for (ArrayList<ArrayList<Integer>> conSetList : comData.getConArcSet().values()) {

@@ -14,29 +14,25 @@ public class DualProblem {
     }
 
     //计算次梯度
-    public void computeSubGradients(HashMap<Integer, Double> variable, double[] y){
-        subGradients = new double[comData.getEquNum()];
-        for (int i = 0; i < comData.getEquNum(); i++) {
-            for(int j = 0; j < comData.getEquArcList(i).size(); j++){
-                int arcIndex = comData.getEquArcList(i).get(j);
+    public void computeSubGradients(HashMap<Integer, Double> variable, double[] y, int task){
+        subGradients = new double[comData.getStarNum()];
+        for (int i = 0; i < comData.getStarNum(); i++) {
+            for(int j = 0; j < comData.getStarArc(i).size(); j++){
+                int arcIndex = comData.getStarArc(i).get(j);
                 subGradients[i] += variable.get(arcIndex);
             }
-            subGradients[i] += y[i];
+            subGradients[i] -= y[i] * task;
         }
     }
 
     public boolean verifySolution(){
-        int max = 2;
         for (Double subGradient : subGradients) {
-            if (subGradient > max) {
-                max = subGradient.intValue();
-                if (max < 1) {
-                    System.out.println("该解符合原问题约束。");
-                    return true;
-                }
+            if (-subGradient < 0) {
+                return false;
             }
         }
-        return false;
+        System.out.println("该解符合原问题约束。");
+        return true;
     }
 
     //更新步长
@@ -52,7 +48,9 @@ public class DualProblem {
     //更新lambda
     public double[] updateLambda(double[] lambda, double stepSize){
         for (int i = 0; i < lambda.length; i++) {
-            lambda[i] = Math.max(0, lambda[i] + stepSize * subGradients[i]); // 更新拉格朗日乘子（非负）
+            if(subGradients[i] < 0){
+                lambda[i] = Math.max(0, lambda[i] - stepSize * subGradients[i]); // 更新拉格朗日乘子（非负）
+            }
         }
         return lambda;
     }
