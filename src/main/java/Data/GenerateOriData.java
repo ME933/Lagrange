@@ -68,12 +68,12 @@ public class GenerateOriData {
         }
 
         // 打印三个列表的内容
-        System.out.println("oriDataStar: " + oriDataStar);
-        System.out.println("oriDataEqu: " + oriDataEqu);
+//        System.out.println("oriDataStar: " + oriDataStar);
+//        System.out.println("oriDataEqu: " + oriDataEqu);
         // 循环输出oriDataArcs中的内容
-        for (String[] arc : oriDataArcs) {
-            System.out.println(java.util.Arrays.toString(arc));
-        }
+//        for (String[] arc : oriDataArcs) {
+////            System.out.println(java.util.Arrays.toString(arc));
+//        }
     }
 
     public ArrayList<String> getOriDataStar() {

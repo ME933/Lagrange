@@ -39,13 +39,9 @@ public class PreData {
 //    ArrayList<int[]> conArc;
     //各弧段冲突数
     HashMap<Integer,Integer> eachArcConNum;
-    //维护子问题，结构y-[<[冲突对1]...,[冲突对n]>,<[跨卫星冲突index，跨卫星冲突弧段index ]...>]
-//    HashMap<Integer, LinkedList[]> subQue;
-//    ArrayList<Integer> crossCon;
-    //维护子问题，结构装备Index-装备冲突对
-//    HashMap<Integer,LinkedList<Integer>> equConPair;
     //按装备构建区间树
     HashMap<Integer, IntervalTree<Date>> intervalTreeByDev;
+    //饱和冲突弧段
     HashMap<Integer,ArrayList<ArrayList<Integer>>> conArcSetByEqu;
     //时间线
     TimeLine[] timeLineList;
@@ -53,7 +49,6 @@ public class PreData {
     int arcNum;
     int starNum;
     int conNum;
-    int crossNum;
     int equNum;
 
     public PreData(HashMap<Integer,ArrayList<ArrayList<Integer>>> conArcSetByEqu,
@@ -147,10 +142,6 @@ public class PreData {
         return conNum;
     }
 
-    public int getCrossNum() {
-        return crossNum;
-    }
-
     public int getStarNum() {
         return starNum;
     }
@@ -238,17 +229,4 @@ public class PreData {
         return starIndexMap.get(starID);
     }
 
-//    //通过Index获取冲突列表
-//    public ArrayList<Integer> getArcConList(int arcIndex){
-//        return conArc.get(arcIndex);
-//    }
-//
-//    //通过序列号获取弧段是否冲突
-//    public Integer ifArcCon(int arcIndex, int arcIndexP){
-//        if(conArc.get(arcIndex).contains(arcIndex) || conArc.get(arcIndexP).contains(arcIndexP)){
-//            return 1;
-//        }else{
-//            return 0;
-//        }
-//    }
 }

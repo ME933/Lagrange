@@ -3,6 +3,7 @@ import Data.ComData;
 import Data.OriData;
 import Data.PreData;
 import Solve.Solver;
+import Tool.DrawChart;
 import Tool.TimeTool;
 import ilog.concert.IloException;
 
@@ -12,6 +13,7 @@ import java.util.Arrays;
 
 public class Main {
     ComData comData;
+    DrawChart drawChart;
 
     public void loadData() throws ParseException {
         OriData oriData;
@@ -24,10 +26,10 @@ public class Main {
     }
 
     public void testLoadData() throws ParseException, IloException {
-        int starNum = 5;
-        int equNum = 2;
-        int arcNum = 20;
-        int arcSize = 240;
+        int starNum = 10000;
+        int equNum = 20;
+        int arcNum = 400000;
+        int arcSize = 7;
         int[] equCap = new int[equNum];
         for (int i = 0; i < equNum; i++) {
             equCap[i] = 1;
@@ -38,14 +40,16 @@ public class Main {
         oriData = new OriData(starNum, equNum, arcNum, arcSize, equCap);
         preProcess = new PreProcess(oriData,"compute");
         preData = preProcess.getPreData();
-        this.comData = new ComData(preData,3,"default");
-        this.solve();
+        this.comData = new ComData(preData,1,"default");
     }
 
     public void solve() throws IloException {
         Solver solver = new Solver(comData);
+        solver.setMaxIter(100);
         solver.executeModel("compute","Lagrange",0.05);
+        drawChart = solver.getDrawChart();
     }
+
 
     public static void main(String[] args) throws ParseException, IloException {
         Main main = new Main();
@@ -55,12 +59,13 @@ public class Main {
         timeTool.addStartTime("总计");
         timeTool.addStartTime("预处理");
         main.loadData();
+//        main.testLoadData();
         timeTool.addEndTime("预处理");
         timeTool.printTime("预处理");
-//        main.testLoadData();
         main.solve();
         timeTool.addEndTime("总计");
         timeTool.printTime("总计");
+        main.drawChart.draw();
         System.out.println("Done!");
     }
 }

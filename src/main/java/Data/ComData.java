@@ -50,7 +50,6 @@ public class ComData {
         this.conNum= preData.getConNum();
         this.mapArcStar = preData.getMapArcStar();
         this.mapArcRai = preData.getMapArcRai();
-        this.intervalTreeByDev = preData.getIntervalTreeByDev();
         this.mapStarArc = preData.getMapStarArc();
         this.taskReq = taskNum;
         this.mapArcEqu = preData.getMapArcEqu();

@@ -1,5 +1,9 @@
 import Data.OriData;
 import Data.PreData;
+import DevCap.EquBeamBuild;
+import DevCap.EquCap;
+import DevCap.RandomTaskType;
+import DevCap.TaskType;
 import File.ConJson;
 import IntervalTree.IntervalTree;
 import IntervalTree.DateInterval;
@@ -14,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.concurrent.TimeUnit;
 
 public class PreProcess {
     OriData oriData;
@@ -21,23 +26,19 @@ public class PreProcess {
     //卫星列表
     ArrayList<Integer> starList;
     //装备列表
-    ArrayList<Integer> oriEquList;
-    //虚拟装备列表
     ArrayList<Integer> equList;
     //弧段列表
     ArrayList<Integer> arcList;
     //弧段信息，弧段ID-弧段信息([弧段ID，卫星ID，装备ID，开始时间，结束时间, 上升下降])
     HashMap<Integer, String[]> arcInfo;
-    //装备信息，装备ID-装备信息([装备ID，装备能力])
-    HashMap<Integer, String[]> equInfo;
+//    //装备信息，装备ID-装备信息([装备ID，装备能力])
+//    HashMap<Integer, String[]> equInfo;
     //卫星-弧段列表
     HashMap<Integer, ArrayList<Integer>> mapStarArc;
     //装备-弧段列表
     HashMap<Integer, ArrayList<Integer>> mapEquArc;
     //卫星，装备，弧段列表
     HashMap<Integer, HashMap<Integer, ArrayList<Integer>>> mapStarEquArc;
-    //冲突列表
-//    ArrayList<int[]> conArc;
     //按装备构建区间树
     HashMap<Integer, IntervalTree<Date>> intervalTreeByDev;
     //各弧段冲突数
@@ -53,22 +54,27 @@ public class PreProcess {
     HashMap<Integer, Integer> mapArcEqu;
     HashMap<Integer, Date[]> mapArcTime;
     HashMap<Integer, String> mapArcRai;
+
     //装备信息，装备组列表
-    HashMap<Integer, ArrayList<Integer>> viaEquMap;
+    HashMap<Integer, ArrayList<Integer>> virEqu;
+    //存储装备对应波束
+    HashMap<Integer, Integer> beamEquMap;
+    //存储装备能力
+    HashMap<Integer, EquCap> equCapMap;
+    //存储真实卫星-虚拟卫星
+    HashMap<Integer,ArrayList<Integer>> virStar;
+//    //存储卫星对应任务
+//    HashMap<Integer,ArrayList<TaskType>> taskTypeMap;
+    //存储虚拟卫星对应任务
+    HashMap<Integer, TaskType> virTaskType;
 
     String modeOrder;
     //时间线
     TimeLine[] timeLineList;
     //存储冲突弧段集合
     HashMap<Integer,ArrayList<ArrayList<Integer>>> conArcSetByEqu;
-    //冲突数
-//    int conNum;
-    //跨卫星冲突对
-//    ArrayList<Integer> crossCon;
-    //维护子问题，结构y-[<[冲突对1]...,[冲突对n]>,<[跨卫星冲突index，跨卫星冲突弧段index ]...>]
-//    HashMap<Integer,LinkedList[]> subQue;
-    //维护子问题，结构装备Index-装备冲突对
-//    HashMap<Integer,LinkedList<Integer>> equConPair;
+
+    DateFormat df;
 
     public PreProcess(OriData oriDataIn, String mode) {
         this.oriData = oriDataIn;
@@ -76,7 +82,13 @@ public class PreProcess {
     }
 
     public PreData getPreData() throws ParseException {
+        this.df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         this.storeList();
+
+        this.virtualizeEqu();
+        this.generateTask();
+        this.virtualizeArc();
+
         this.generateMap();
 //        this.generateCon();
         this.creatTimeLine();
@@ -87,53 +99,21 @@ public class PreProcess {
     //存储列表信息
     private void storeList() {
         this.starList = new ArrayList<>();
-        this.oriEquList = new ArrayList<>();
         this.arcList = new ArrayList<>();
         this.equList = new ArrayList<>();
         this.arcInfo = new HashMap<>();
-        this.equInfo = new HashMap<>();
         this.arcIndexMap = new HashMap<>();
         this.starIndexMap = new HashMap<>();
         this.equIndexMap = new HashMap<>();
-        this.viaEquMap = new HashMap<>();
-        HashMap<Integer, ArrayList<Integer>> tempViaEquMap;
-        tempViaEquMap = new HashMap<>();
         for (String[] equ : this.oriData.getOriDataEqu()) {
             String equName = equ[0];
-            this.oriEquList.add(Integer.parseInt(equ[0]));
-            equInfo.put(Integer.parseInt(equ[0]), equ);
-            int equCap = Integer.parseInt(equ[1]);
-            //存储虚拟装备和映射
-            ArrayList<Integer> viaEqu = new ArrayList<>();
-            if (equCap > 1) {
-                for (int i = 0; i < equCap; i++) {
-                    String newName = equName + i;
-                    this.equList.add(Integer.parseInt(newName));
-                    viaEqu.add(Integer.parseInt(newName));
-                }
-            } else {
-                this.equList.add(Integer.parseInt(equName));
-                viaEqu.add(Integer.parseInt(equName));
-            }
-            tempViaEquMap.put(Integer.parseInt(equName), viaEqu);
+            //存储装备
+            this.equList.add(Integer.parseInt(equName));
         }
         for (String[] arc : this.oriData.getOriDataArcs()) {
-            String equName = arc[2];
             String arcName = arc[0];
-            int equCap = Integer.parseInt(equInfo.get(Integer.parseInt(equName))[1]);
-            if (equCap > 1) {
-                for (int i = 0; i < equCap; i++) {
-                    String equNewName = equName + i;
-                    String arcNewName = arcName + i;
-                    String[] newArcInfo = arc.clone();
-                    this.arcList.add(Integer.parseInt(arcNewName));
-                    newArcInfo[2] = equNewName;
-                    arcInfo.put(Integer.parseInt(arcNewName), newArcInfo);
-                }
-            } else {
-                this.arcList.add(Integer.parseInt(arcName));
-                arcInfo.put(Integer.parseInt(arcName), arc);
-            }
+            this.arcList.add(Integer.parseInt(arcName));
+            arcInfo.put(Integer.parseInt(arcName), arc);
         }
         for (String star : this.oriData.getOriDataStar()) {
             this.starList.add(Integer.parseInt(star));
@@ -147,16 +127,117 @@ public class PreProcess {
         for (int i = 0; i < starList.size(); i++) {
             starIndexMap.put(starList.get(i), i);
         }
-        //添加虚拟装备
-        for (int equID : tempViaEquMap.keySet()) {
-            ArrayList<Integer> equIDList = tempViaEquMap.get(equID);
-            ArrayList<Integer> equIndexList = new ArrayList<>();
-            int equIndex = equIndexMap.get(equID);
-            for (int equIDTemp : equIDList) {
-                equIndexList.add(equIndexMap.get(equIDTemp));
-            }
-            viaEquMap.put(equIndex, equIndexList);
+
+    }
+
+    //生成虚拟装备
+    private void virtualizeEqu(){
+        ArrayList<Integer> newEquList = new ArrayList<>(equList);
+//        HashMap<Integer, String[]> newEquInfo = new HashMap<>(equInfo);
+        EquBeamBuild equBeamBuild = new EquBeamBuild();
+        beamEquMap = new HashMap<>();
+        virEqu = new HashMap<>();
+        equCapMap = new HashMap<>();
+        EquCap[] equCapList = equBeamBuild.getEquCapList();
+        for(int equID:equList){
+            virEqu.put(equID,new ArrayList<>(equID));
+            beamEquMap.put(equID,equID);
         }
+        //虚拟化波束
+        for (int i = 0; i < equList.size(); i++) {
+            EquCap equCap = equCapList[i];
+            int equID = equList.get(i);
+            equCapMap.put(equID, equCap);
+            for (int j = 0; j < equCap.getBeamNum() - 1; j++) {
+                int newEquIndex = newEquList.size();
+                int newEquID = Integer.parseInt((String.valueOf(equID) + j));
+                equIndexMap.put(newEquID, newEquIndex);
+                newEquList.add(newEquID);
+                virEqu.get(equID).add(newEquID);
+                beamEquMap.put(newEquID, equID);
+//                String[] newEquInfoString = equInfo.get(i);
+//                newEquInfoString[0] = String.valueOf(newEquIndex);
+//                newEquInfo.put(newEquIndex,newEquInfoString);
+            }
+        }
+//        equInfo = newEquInfo;
+        equList = newEquList;
+    }
+
+    //生成任务，根据任务生成虚拟卫星
+    private void generateTask(){
+        RandomTaskType randomTaskType = new RandomTaskType();
+        HashMap<Integer,ArrayList<TaskType>>taskTypeMap = randomTaskType.generateRandomTask(starList.size(),1);
+        ArrayList<Integer> newStarList = new ArrayList<>(starList);
+        this.virStar = new HashMap<>();
+        this.virTaskType = new HashMap<>();
+        for (int starID : starList) {
+            virStar.put(starID, new ArrayList<>(starID));
+        }
+        for (int i = 0; i < starList.size(); i++) {
+            int starID = starList.get(i);
+            ArrayList<TaskType> taskTypeList = taskTypeMap.get(i);
+            virTaskType.put(starID, taskTypeList.get(0));
+            //若该卫星对应任务数大于1，虚拟化该卫星
+            if(taskTypeList.size() > 1){
+                for (int j = 1; j < taskTypeList.size(); j++) {
+                    int newStarIndex = newStarList.size();
+                    int newStarID = Integer.parseInt((String.valueOf(starID) + j));
+                    starIndexMap.put(newStarID, newStarIndex);
+                    newStarList.add(newStarID);
+                    virStar.get(starID).add(newStarID);
+                    virTaskType.put(newStarID, taskTypeList.get(j));
+                }
+            }
+        }
+        starList = newStarList;
+    }
+
+    //根据虚拟
+    private void virtualizeArc() throws ParseException {
+        ArrayList<Integer> newArcList = new ArrayList<>();
+        //弧段信息，弧段ID-弧段信息([弧段ID，卫星ID，装备ID，开始时间，结束时间, 上升下降])
+        HashMap<Integer, String[]> newArcInfo = new HashMap<>();
+        HashMap<Integer, Integer> newArcIndexMap = new HashMap<>();
+        //检索卫星对应虚拟卫星，若该虚拟卫星符合波束能力，生成对应波束数量的虚拟弧段
+        for (int arcID: arcList) {
+            String[] thisArcInfo = arcInfo.get(arcID); //得到原始弧段信息
+            int starID = Integer.parseInt(thisArcInfo[1]);
+            int equID = Integer.parseInt(thisArcInfo[2]);
+            //检索虚拟卫星
+            for (int virStarID: virStar.get(starID)) {
+                TaskType taskType = virTaskType.get(virStarID);
+                Date startTime = df.parse(thisArcInfo[3]);
+                Date endTime = df.parse(thisArcInfo[4]);
+                //筛选时间
+                if(countTimeSecondsGap(startTime, endTime) > taskType.getSeconds()){
+                    EquCap equCap = equCapMap.get(equID);
+                    //筛选能力
+                    if(equCap.verifyCap(taskType)){
+                        int i = 0;
+                        for (int virEquID: virEqu.get(equID)) {
+                            int newArcID = Integer.parseInt((String.valueOf(arcID) + i));
+                            int newArcIndex = newArcList.size();
+                            i++;
+                            //修改INFO信息
+                            String[] thisNewArcInfo = thisArcInfo.clone();
+                            thisNewArcInfo[0] = String.valueOf(newArcID);
+                            thisNewArcInfo[1]  = String.valueOf(virStarID);
+                            thisNewArcInfo[2]  = String.valueOf(virEquID);
+                            thisNewArcInfo[3]  = thisArcInfo[3];
+                            thisNewArcInfo[4]  = thisArcInfo[4];
+                            thisNewArcInfo[5]  = thisArcInfo[5];
+                            newArcInfo.put(newArcID, thisNewArcInfo);
+                            newArcList.add(newArcID);
+                            newArcIndexMap.put(newArcID, newArcIndex);
+                        }
+                    }
+                }
+            }
+        }
+        arcList = newArcList;
+        arcInfo = newArcInfo;
+        arcIndexMap = newArcIndexMap;
     }
 
     //建立映射信息
@@ -168,7 +249,6 @@ public class PreProcess {
         this.mapArcEqu = new HashMap<>();
         this.mapArcTime = new HashMap<>();
         this.mapArcRai = new HashMap<>();
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         for (int i = 0; i < arcList.size(); i++) {
             int arcID = arcList.get(i);
             String[] theArcInfo = arcInfo.get(arcID);
@@ -213,6 +293,57 @@ public class PreProcess {
         }
     }
 
+
+    private void buildIntervalTreeByDev(int arcIndex) {
+        int equIndex = mapArcEqu.get(arcIndex);
+        if (!this.intervalTreeByDev.containsKey(equIndex)) {
+                IntervalTree<Date> tree = new IntervalTree<Date>();
+                this.intervalTreeByDev.put(equIndex, tree);//为每个装备构建一棵对应的区间树，加入索引
+        }
+        this.intervalTreeByDev.get(equIndex).add
+                (new DateInterval(mapArcTime.get(arcIndex)[0], mapArcTime.get(arcIndex)[1], Interval.Bounded.CLOSED, String.valueOf(arcIndex)));//向区间树中添加区间
+
+    }
+
+
+    private void addConNum(int i){
+        if (eachArcConNum.containsKey(i)) {
+            int conNum = eachArcConNum.get(i);
+            eachArcConNum.put(i, conNum + 1);
+        } else {
+            eachArcConNum.put(i, 1);
+        }
+    }
+
+
+    //建立时间轴，求解冲突弧段集合
+    private void creatTimeLine(){
+        conArcSetByEqu = new HashMap<>();
+        for (int i = 0; i < equList.size(); i++) {
+            TimeLine timeLine = new TimeLine();
+            timeLine.insertArc(i,mapEquArc,mapArcTime);
+            conArcSetByEqu.put(i,timeLine.searchTimeline());
+        }
+    }
+
+    public long countTimeSecondsGap(Date time1, Date time2){
+        long diffInMillie = Math.abs(time1.getTime() - time2.getTime());
+        return TimeUnit.SECONDS.convert(diffInMillie, TimeUnit.MILLISECONDS);
+    }
+
+    public int getEquIndexByID(int equID){
+        return equIndexMap.get(equID);
+    }
+
+    public int getStarIndexByID(int starID){
+        return starIndexMap.get(starID);
+    }
+
+    public int getArcIndexByID(int arcID){
+        return arcIndexMap.get(arcID);
+    }
+
+
     //读取时间信息，建立冲突信息
     //若不包含冲突文件，则建立冲突信息并写入文件
     //若包含冲突文件，则读取冲突文件
@@ -249,117 +380,4 @@ public class PreProcess {
 //        this.creatQue();
     }
     */
-
-    private void buildIntervalTreeByDev(int arcIndex) {
-        int equIndex = mapArcEqu.get(arcIndex);
-        if (!this.intervalTreeByDev.containsKey(equIndex)) {
-                IntervalTree<Date> tree = new IntervalTree<Date>();
-                this.intervalTreeByDev.put(equIndex, tree);//为每个装备构建一棵对应的区间树，加入索引
-        }
-        this.intervalTreeByDev.get(equIndex).add
-                (new DateInterval(mapArcTime.get(arcIndex)[0], mapArcTime.get(arcIndex)[1], Interval.Bounded.CLOSED, String.valueOf(arcIndex)));//向区间树中添加区间
-
-    }
-
-    /*
-
-    private ArrayList<int[]> computeCon(){
-        LinkedList<int[]> tempOutConArc = new LinkedList<>();
-        //遍历生成冲突对
-        eachArcConNum = new HashMap<>();
-        for (int i = 0; i < arcList.size(); i++) {
-            int equIndex = mapArcEqu.get(i);
-//            int starIndex = mapArcStar.get(i);
-            Date[] time = mapArcTime.get(i);
-            Date startTime = time[0];
-            Date endTime = time[1];
-            for (int j = i + 1; j < arcList.size(); j++) {
-                int equIndexP = mapArcEqu.get(j);
-//                int starIndexP = mapArcStar.get(j);
-                if(equIndex == equIndexP){
-                    Date[] timeP = mapArcTime.get(j);
-                    Date startTimeP = timeP[0];
-                    Date endTimeP = timeP[1];
-                    //判断是否冲突
-                    if(endTimeP.after(startTime) && startTimeP.before(endTime)) {
-                        //筛选跨卫星冲突对，若属于跨卫星冲突对，则以[跨卫星冲突对序号，冲突弧段序号]存入相应卫星的第二个List，并存储lambda与冲突弧段对应信息
-                        addConNum(i);
-                        addConNum(j);
-                        tempOutConArc.add(new int[]{i,j});
-                    }
-                }
-            }
-        }
-//        this.crossCon = new ArrayList<>(tempCrossCom);
-        return new ArrayList<>(tempOutConArc);
-    }
-    */
-
-    /*
-    private void creatEquCon(){
-        this.equConPair = new HashMap<>();
-        for (int i = 0; i < equList.size(); i++) {
-            equConPair.put(i,new LinkedList<>());
-        }
-        for (int i = 0; i < conArc.size(); i++) {
-            int[] conPair = conArc.get(i);
-            int equIndex = mapArcEqu.get(conPair[0]);
-            equConPair.get(equIndex).add(i);
-        }
-    }
-
-     */
-
-    /*
-    private void creatQue(){
-        crossNum = 0;
-        crossCon = new ArrayList<>();
-        this.subQue = new HashMap<>();
-        //初始化subQue，维护子问题，结构y-[<[冲突对1]...,[冲突对n]>,<[跨卫星冲突index，跨卫星冲突弧段index ]...>]
-        for (int i = 0; i < starList.size(); i++) {
-            LinkedList[] comData = new LinkedList[2];
-            comData[0] = new LinkedList<int[]>();
-            comData[1] = new LinkedList<int[]>();
-            this.subQue.put(i,comData);
-        }
-        for (int i = 0; i < conArc.size(); i++) {
-            int[] conPair = conArc.get(i);
-            int xi = conPair[0];
-            int xj = conPair[1];
-            int starI = mapArcStar.get(xi);
-            int starJ = mapArcStar.get(xj);
-            if(starI != starJ){
-                subQue.get(starI)[1].add(new int[]{crossNum,xi});
-                subQue.get(starJ)[1].add(new int[]{crossNum,xj});
-                crossCon.add(i);
-                crossNum++;
-            }
-            //若不属于跨卫星冲突对，将其存入相应卫星的第一个List
-            else {
-                subQue.get(starI)[0].add(new int[]{starI,starJ});
-            }
-        }
-    }
-    */
-
-    private void addConNum(int i){
-        if (eachArcConNum.containsKey(i)) {
-            int conNum = eachArcConNum.get(i);
-            eachArcConNum.put(i, conNum + 1);
-        } else {
-            eachArcConNum.put(i, 1);
-        }
-    }
-
-
-    //建立时间轴，求解冲突弧段集合
-    private void creatTimeLine(){
-        conArcSetByEqu = new HashMap<>();
-        for (int i = 0; i < equList.size(); i++) {
-            TimeLine timeLine = new TimeLine();
-            timeLine.insertArc(i,mapEquArc,mapArcTime);
-            conArcSetByEqu.put(i,timeLine.searchTimeline());
-        }
-    }
-
 }

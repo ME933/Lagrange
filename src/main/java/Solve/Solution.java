@@ -88,4 +88,23 @@ public class Solution {
         }
         return value;
     }
+
+    public double[] getObjectiveValueVector(HashMap<Integer,Double> xMap, HashMap<Integer,ArrayList<Integer>> mapStarArc, int task){
+        double[] y = new double[mapStarArc.size()];
+        for (int i = 0; i < mapStarArc.size(); i++) {
+            y[i] = 0;
+        }
+        for (int i = 0; i < mapStarArc.size(); i++) {
+            ArrayList<Integer> xList = mapStarArc.get(i);
+            int temp = 0;
+            for (int xIndex:xList) {
+                temp += xMap.get(xIndex);
+                if(temp >= task){
+                    y[i] = 1;
+                    break;
+                }
+            }
+        }
+        return y;
+    }
 }
