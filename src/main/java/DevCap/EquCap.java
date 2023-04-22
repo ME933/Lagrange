@@ -1,6 +1,7 @@
 package DevCap;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class EquCap {
     //波束数量
@@ -10,6 +11,7 @@ public class EquCap {
 
     public EquCap(int beamNum){
         this.beamNum = beamNum;
+        this.beamCapList = new ArrayList<>();
     }
 
     public void addBeamCap(String[] beamCap){
@@ -17,7 +19,8 @@ public class EquCap {
     }
 
     public boolean verifyCap(TaskType taskType){
-        return beamCapList.contains(taskType.getTtarTypeString());
+        return beamCapList.stream().anyMatch(array -> Arrays.equals(array, taskType.getTtarTypeString()));
+//        return beamCapList.contains(taskType.getTtarTypeString());
     }
 
     public int getBeamNum() {

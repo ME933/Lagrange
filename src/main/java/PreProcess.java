@@ -90,6 +90,10 @@ public class PreProcess {
         this.virtualizeArc();
 
         this.generateMap();
+        this.filterList();
+
+        this.generateMap();
+
 //        this.generateCon();
         this.creatTimeLine();
         this.preData = new PreData(conArcSetByEqu, timeLineList, starList, equList, arcList, mapStarArc, mapEquArc, mapStarEquArc, intervalTreeByDev, eachArcConNum, starIndexMap, equIndexMap, arcIndexMap, mapArcStar, mapArcEqu, mapArcTime, mapArcRai);
@@ -140,7 +144,8 @@ public class PreProcess {
         equCapMap = new HashMap<>();
         EquCap[] equCapList = equBeamBuild.getEquCapList();
         for(int equID:equList){
-            virEqu.put(equID,new ArrayList<>(equID));
+            virEqu.put(equID,new ArrayList<>());
+            virEqu.get(equID).add(equID);
             beamEquMap.put(equID,equID);
         }
         //虚拟化波束
@@ -167,12 +172,13 @@ public class PreProcess {
     //生成任务，根据任务生成虚拟卫星
     private void generateTask(){
         RandomTaskType randomTaskType = new RandomTaskType();
-        HashMap<Integer,ArrayList<TaskType>>taskTypeMap = randomTaskType.generateRandomTask(starList.size(),1);
+        HashMap<Integer,ArrayList<TaskType>>taskTypeMap = randomTaskType.generateRandomTask(starList.size(),2);
         ArrayList<Integer> newStarList = new ArrayList<>(starList);
         this.virStar = new HashMap<>();
         this.virTaskType = new HashMap<>();
         for (int starID : starList) {
-            virStar.put(starID, new ArrayList<>(starID));
+            virStar.put(starID, new ArrayList<>());
+            virStar.get(starID).add(starID);
         }
         for (int i = 0; i < starList.size(); i++) {
             int starID = starList.get(i);
@@ -216,7 +222,7 @@ public class PreProcess {
                     if(equCap.verifyCap(taskType)){
                         int i = 0;
                         for (int virEquID: virEqu.get(equID)) {
-                            int newArcID = Integer.parseInt((String.valueOf(arcID) + i));
+                            int newArcID = newArcList.size();
                             int newArcIndex = newArcList.size();
                             i++;
                             //修改INFO信息
@@ -252,25 +258,19 @@ public class PreProcess {
         for (int i = 0; i < arcList.size(); i++) {
             int arcID = arcList.get(i);
             String[] theArcInfo = arcInfo.get(arcID);
-            int starIndex = starIndexMap.get(Integer.parseInt(theArcInfo[1]));
-            int equIndex = equIndexMap.get(Integer.parseInt(theArcInfo[2]));
-            this.mapArcStar.put(i, starIndex);
-            this.mapArcEqu.put(i, equIndex);
+            int starID = Integer.parseInt(theArcInfo[1]);
+            int equID = Integer.parseInt(theArcInfo[2]);
+            int starIndex = starIndexMap.get(starID);
+            int equIndex = equIndexMap.get(equID);
+            int arcIndex = arcIndexMap.get(arcID);
+            this.mapArcStar.put(arcIndex, starIndex);
+            this.mapArcEqu.put(arcIndex, equIndex);
             Date[] time = new Date[2];
             time[0] = df.parse(theArcInfo[3]);
             time[1] = df.parse(theArcInfo[4]);
-            this.mapArcTime.put(i, time);
-            this.mapArcRai.put(i, theArcInfo[5]);
-        }
-        for (int i = 0; i < arcList.size(); i++) {
-/*
-            int arcID = arcList.get(i);
-            String[] arcArray = arcInfo.get(arcID);
-            int starID = Integer.parseInt(arcArray[1]);
-            int equID = Integer.parseInt(arcArray[2]);
-*/
-            int starIndex = mapArcStar.get(i);
-            int equIndex = mapArcEqu.get(i);
+            this.mapArcTime.put(arcIndex, time);
+            this.mapArcRai.put(arcIndex, theArcInfo[5]);
+
             //索引键值不包含该卫星，则建立新数组并存入
             if (!mapStarArc.containsKey(starIndex)) {
                 mapStarArc.put(starIndex, new ArrayList<>());
@@ -291,6 +291,33 @@ public class PreProcess {
             }
             mapStarEquArc.get(starIndex).get(equIndex).add(i);
         }
+    }
+
+    public void filterList(){
+        ArrayList<Integer> newStarList = new ArrayList<>();
+        ArrayList<Integer> newEquList = new ArrayList<>();
+        HashMap<Integer, Integer> newStarIndexMap = new HashMap<>();
+        HashMap<Integer, Integer> newEquIndexMap = new HashMap<>();
+        for (int starID: starList) {
+            int starIndex = getStarIndexByID(starID);
+            if(mapStarArc.get(starIndex) != null){
+                int newStarIndex = newStarList.size();
+                newStarList.add(newStarIndex);
+                newStarIndexMap.put(starID, newStarIndex);
+            }
+        }
+        for (int equID: equList) {
+            int equIndex = getEquIndexByID(equID);
+            if(mapEquArc.get(equIndex) != null){
+                int newEquIndex = newEquList.size();
+                newEquList.add(equIndex);
+                newEquIndexMap.put(equID, newEquIndex);
+            }
+        }
+        starList = newStarList;
+        equList = newEquList;
+        starIndexMap = newStarIndexMap;
+        equIndexMap = newEquIndexMap;
     }
 
 

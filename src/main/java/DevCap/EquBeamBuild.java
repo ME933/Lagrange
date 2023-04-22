@@ -10,7 +10,7 @@ public class EquBeamBuild {
     //带宽：MHz
 
     public EquBeamBuild(){
-        this.equCapList = new EquCap[5];
+        this.equCapList = new EquCap[6];
 
         equCapList[0] = new EquCap(4);
         equCapList[0].addBeamCap(new String[]{"L","RC","20"});
@@ -30,7 +30,7 @@ public class EquBeamBuild {
         equCapList[2].addBeamCap(new String[]{"S","RC","20"});
         equCapList[2].addBeamCap(new String[]{"S","TE","20"});
         equCapList[2].addBeamCap(new String[]{"S","SU","20"});
-        equCapList[2].addBeamCap(new String[]{"S","SS","30"});
+        equCapList[2].addBeamCap(new String[]{"S","SS","20"});
         equCapList[2].addBeamCap(new String[]{"S","RC","20"});
 
         equCapList[3] = new EquCap(2);
