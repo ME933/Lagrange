@@ -36,6 +36,8 @@ public class ComData {
     HashMap<Integer, IntervalTree<Date>> intervalTreeByDev;
     //饱和冲突弧段集合构成的集合
     HashMap<Integer,ArrayList<ArrayList<Integer>>> conArcSetByEqu;
+    //任务-虚拟任务
+    HashMap<Integer,ArrayList<Integer>> virStar;
 
     //热启动解x
     double[] xMIPStartList;
@@ -47,7 +49,6 @@ public class ComData {
     public ComData(PreData preData, int taskNum,String MIPStartMode){
         this.arcNum = preData.getArcNum();
         this.starNum = preData.getStarNum();
-        this.conNum= preData.getConNum();
         this.mapArcStar = preData.getMapArcStar();
         this.mapArcRai = preData.getMapArcRai();
         this.mapStarArc = preData.getMapStarArc();
@@ -59,6 +60,8 @@ public class ComData {
         this.MIPStartMode = MIPStartMode;
         this.conArcSetByEqu = preData.getConArcSetByEqu();
         this.eachArcConNum = new HashMap<>();
+        this.conNum= this.countConNum();
+        this.virStar = preData.getVirStar();
         if(MIPStartMode.equals("MIPStart")){
             MIPStart mipStart = new MIPStart();
             mipStart.readStartList();
@@ -67,7 +70,19 @@ public class ComData {
         }
     }
 
-    public  HashMap<Integer,ArrayList<ArrayList<Integer>>> getConArcSet(){
+    private int countConNum(){
+        int conNum = 0;
+        for (ArrayList<ArrayList<Integer>> tempList: conArcSetByEqu.values()) {
+            conNum += tempList.size();
+        }
+        return conNum;
+    }
+
+    public HashMap<Integer, ArrayList<Integer>> getVirStar() {
+        return virStar;
+    }
+
+    public  HashMap<Integer,ArrayList<ArrayList<Integer>>> getConArcSetByEqu(){
         return conArcSetByEqu;
     }
     public int getEquNum() {
@@ -99,21 +114,24 @@ public class ComData {
 //        return new ArrayList<>(equConPair.get(equIndex));
 //    }
 
-    public ArrayList<Integer> getConArc(int arcIndex){
-        ArrayList<Integer> conArcList = new ArrayList<>();
-        Set<Interval<Date>> ids = this.intervalTreeByDev
-                .get(getArcEqu(arcIndex))
-                .query(new DateInterval(mapArcTime.get(arcIndex)[0], mapArcTime.get(arcIndex)[1], Interval.Bounded.CLOSED, String.valueOf(arcIndex)));
-        for (Interval<Date> i : ids) {
-            conArcList.add(Integer.parseInt(i.getID()));
+
+    public ArrayList<ArrayList<Integer>> getConArcSet(){
+        ArrayList<ArrayList<Integer>> conArcSet = new ArrayList<>();
+        for (ArrayList<ArrayList<Integer>> tempList: conArcSetByEqu.values()) {
+            conArcSet.addAll(tempList);
         }
-        return conArcList;
+        return conArcSet;
     }
-
-
-    public HashMap<Integer, ArrayList<ArrayList<Integer>>> getConArcSetByEqu() {
-        return conArcSetByEqu;
-    }
+//    public ArrayList<Integer> getConArc(int arcIndex){
+//        ArrayList<Integer> conArcList = new ArrayList<>();
+//        Set<Interval<Date>> ids = this.intervalTreeByDev
+//                .get(getArcEqu(arcIndex))
+//                .query(new DateInterval(mapArcTime.get(arcIndex)[0], mapArcTime.get(arcIndex)[1], Interval.Bounded.CLOSED, String.valueOf(arcIndex)));
+//        for (Interval<Date> i : ids) {
+//            conArcList.add(Integer.parseInt(i.getID()));
+//        }
+//        return conArcList;
+//    }
 
     public HashMap<Integer, ArrayList<Integer>> getMapStarArc() {
         return mapStarArc;

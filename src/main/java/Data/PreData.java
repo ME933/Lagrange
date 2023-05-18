@@ -45,6 +45,8 @@ public class PreData {
     HashMap<Integer,ArrayList<ArrayList<Integer>>> conArcSetByEqu;
     //时间线
     TimeLine[] timeLineList;
+    //任务-虚拟任务
+    HashMap<Integer,ArrayList<Integer>> virStar;
 
     int arcNum;
     int starNum;
@@ -67,7 +69,8 @@ public class PreData {
                    HashMap<Integer,Integer> inMapArcStar,
                    HashMap<Integer,Integer> inMapArcEqu,
                    HashMap<Integer,Date[]> inMapArcTime,
-                   HashMap<Integer, String> inMapArcRai){
+                   HashMap<Integer, String> inMapArcRai,
+                   HashMap<Integer,ArrayList<Integer>> virStar){
         //按装备构建区间树
         this.intervalTreeByDev =  intervalTreeByDev;;
         this.starList = inStarList;
@@ -77,6 +80,7 @@ public class PreData {
         this.mapStarArc = inMapStarArc;
         this.mapEquArc = inMapEquArc;
         this.mapStarEquArc = inMapStarEquArc;
+        this.virStar = virStar;
 //        this.conArc = inConArc;
         this.starIndexMap = inStarIndexMap;
         this.equIndexMap = inEquIndexMap;
@@ -95,6 +99,10 @@ public class PreData {
         this.equNum = equList.size();
         this.conArcSetByEqu = conArcSetByEqu;
 
+    }
+
+    public HashMap<Integer, ArrayList<Integer>> getVirStar() {
+        return virStar;
     }
 
     public HashMap<Integer, ArrayList<ArrayList<Integer>>> getConArcSetByEqu() {

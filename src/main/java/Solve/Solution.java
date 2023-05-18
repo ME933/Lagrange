@@ -10,7 +10,7 @@ import java.util.TreeMap;
 public class Solution {
 
     public boolean verifySolution(ComData comData, HashMap<Integer,Double> xMap) {
-        for (ArrayList<ArrayList<Integer>> conSetList : comData.getConArcSet().values()) {
+        for (ArrayList<ArrayList<Integer>> conSetList : comData.getConArcSetByEqu().values()) {
             for (ArrayList<Integer> conSet: conSetList) {
                 int selectedArc = 0;
                 TreeMap<Integer, ArrayList<Integer>> conNumTree = new TreeMap<>();
@@ -35,7 +35,7 @@ public class Solution {
 
     public HashMap<Integer,Double> transSolution(ComData comData, HashMap<Integer,Double> xMap){
         HashMap<Integer,Double> transformedX = (HashMap<Integer, Double>) xMap.clone();
-        for (ArrayList<ArrayList<Integer>> conSetList : comData.getConArcSet().values()) {
+        for (ArrayList<ArrayList<Integer>> conSetList : comData.getConArcSetByEqu().values()) {
             for (ArrayList<Integer> conSet : conSetList) {
                 //计算选用弧段数，同时维护选用弧段及其对应冲突数的treeMap
                 int selectedArc = 0;
@@ -53,7 +53,7 @@ public class Solution {
                     }
                 }
                 //释放冲突数较少的冲突弧段
-                while (selectedArc > 1) {
+                while (selectedArc > comData.getTask()) {
                     //获取最大冲突数
                     int maxConNum = conNumTree.lastKey();
                     //获取最大冲突数对应弧段并更新treeMap

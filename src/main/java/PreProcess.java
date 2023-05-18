@@ -81,12 +81,12 @@ public class PreProcess {
         this.modeOrder = mode;
     }
 
-    public PreData getPreData() throws ParseException {
+    public PreData getPreData(int seed) throws ParseException {
         this.df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         this.storeList();
 
         this.virtualizeEqu();
-        this.generateTask();
+        this.generateTask(seed);
         this.virtualizeArc();
 
         this.generateMap();
@@ -94,9 +94,10 @@ public class PreProcess {
 
         this.generateMap();
 
+
 //        this.generateCon();
         this.creatTimeLine();
-        this.preData = new PreData(conArcSetByEqu, timeLineList, starList, equList, arcList, mapStarArc, mapEquArc, mapStarEquArc, intervalTreeByDev, eachArcConNum, starIndexMap, equIndexMap, arcIndexMap, mapArcStar, mapArcEqu, mapArcTime, mapArcRai);
+        this.preData = new PreData(conArcSetByEqu, timeLineList, starList, equList, arcList, mapStarArc, mapEquArc, mapStarEquArc, intervalTreeByDev, eachArcConNum, starIndexMap, equIndexMap, arcIndexMap, mapArcStar, mapArcEqu, mapArcTime, mapArcRai , virStar);
         return preData;
     }
 
@@ -170,9 +171,9 @@ public class PreProcess {
     }
 
     //生成任务，根据任务生成虚拟卫星
-    private void generateTask(){
+    private void generateTask(int seed){
         RandomTaskType randomTaskType = new RandomTaskType();
-        HashMap<Integer,ArrayList<TaskType>>taskTypeMap = randomTaskType.generateRandomTask(starList.size(),2);
+        HashMap<Integer,ArrayList<TaskType>>taskTypeMap = randomTaskType.generateRandomTask(starList.size(), seed);
         ArrayList<Integer> newStarList = new ArrayList<>(starList);
         this.virStar = new HashMap<>();
         this.virTaskType = new HashMap<>();
@@ -298,12 +299,14 @@ public class PreProcess {
         ArrayList<Integer> newEquList = new ArrayList<>();
         HashMap<Integer, Integer> newStarIndexMap = new HashMap<>();
         HashMap<Integer, Integer> newEquIndexMap = new HashMap<>();
+        HashMap<Integer, Integer> newFromOld = new HashMap<>();
         for (int starID: starList) {
             int starIndex = getStarIndexByID(starID);
             if(mapStarArc.get(starIndex) != null){
                 int newStarIndex = newStarList.size();
                 newStarList.add(newStarIndex);
                 newStarIndexMap.put(starID, newStarIndex);
+                newFromOld.put(starID,newStarIndex);
             }
         }
         for (int equID: equList) {
@@ -314,10 +317,28 @@ public class PreProcess {
                 newEquIndexMap.put(equID, newEquIndex);
             }
         }
+        this.ID2Index(newFromOld);
         starList = newStarList;
         equList = newEquList;
         starIndexMap = newStarIndexMap;
         equIndexMap = newEquIndexMap;
+    }
+
+    private void ID2Index(HashMap<Integer, Integer> newFromOld){
+        HashMap<Integer,ArrayList<Integer>> newVirStar = new HashMap<>();
+        for (int starID: virStar.keySet()) {
+            if (newFromOld.containsKey(starID)){
+                int starIndex = newFromOld.get(starID);
+                    newVirStar.put(starIndex, new ArrayList<>());
+                    for (int virStarID: virStar.get(starID)) {
+                        if (newFromOld.containsKey(virStarID)) {
+                            int virStarIndex = newFromOld.get(virStarID);
+                            newVirStar.get(starIndex).add(virStarIndex);
+                        }
+                    }
+                }
+        }
+        virStar = newVirStar;
     }
 
 

@@ -52,6 +52,25 @@ public class EquBeamBuild {
         equCapList[5].addBeamCap(new String[]{"C","TE","20"});
         equCapList[5].addBeamCap(new String[]{"C","SU","20"});
         equCapList[5].addBeamCap(new String[]{"C","SS","20"});
+
+//        equCapList[6] = new EquCap(2);
+//        equCapList[6].addBeamCap(new String[]{"S","RC","20"});
+//        equCapList[6].addBeamCap(new String[]{"S","TE","20"});
+//        equCapList[6].addBeamCap(new String[]{"S","SU","20"});
+//        equCapList[6].addBeamCap(new String[]{"S","SS","20"});
+//
+//        equCapList[7] = new EquCap(2);
+//        equCapList[7].addBeamCap(new String[]{"S","DT","20"});
+//
+//        equCapList[8] = new EquCap(2);
+//        equCapList[8].addBeamCap(new String[]{"C","RC","20"});
+//        equCapList[8].addBeamCap(new String[]{"C","TE","20"});
+//        equCapList[8].addBeamCap(new String[]{"C","SU","20"});
+//        equCapList[8].addBeamCap(new String[]{"C","SS","20"});
+//
+//        equCapList[9] = new EquCap(2);
+//        equCapList[9].addBeamCap(new String[]{"S","DT","20"});
+
     }
 
     public EquCap[] getEquCapList() {

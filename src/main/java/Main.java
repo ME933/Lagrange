@@ -21,8 +21,8 @@ public class Main {
         PreProcess preProcess;
         oriData = new OriData();
         preProcess = new PreProcess(oriData,"load");
-        preData = preProcess.getPreData();
-        this.comData = new ComData(preData,2,"");
+        preData = preProcess.getPreData(1);
+        this.comData = new ComData(preData,1,"");
     }
 
     public void testLoadData() throws ParseException, IloException {
@@ -39,14 +39,14 @@ public class Main {
         PreProcess preProcess;
         oriData = new OriData(starNum, equNum, arcNum, arcSize, equCap);
         preProcess = new PreProcess(oriData,"compute");
-        preData = preProcess.getPreData();
+        preData = preProcess.getPreData(1);
         this.comData = new ComData(preData,1,"default");
     }
 
     public void solve() throws IloException {
         Solver solver = new Solver(comData);
         solver.setMaxIter(100);
-        solver.executeModel("compute","Lagrange",0.05);
+        solver.executeModel("compute","Default",0.00);
         drawChart = solver.getDrawChart();
     }
 
@@ -65,7 +65,7 @@ public class Main {
         main.solve();
         timeTool.addEndTime("总计");
         timeTool.printTime("总计");
-        main.drawChart.draw();
+//        main.drawChart.draw();
         System.out.println("Done!");
     }
 }

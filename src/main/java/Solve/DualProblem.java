@@ -76,10 +76,10 @@ public class DualProblem {
             change = m[i] / (sqrt(v[i]) + epsilon);
 //            change = subGradients[i];
             if(change > 0){
-                change = change * 0;
+                change = change * 0.1;
             }
 //            change = pow(E, -change) * change;
-            lambda[i] = Math.max(0.001, lambda[i] - stepSize * change);
+            lambda[i] = Math.max(0.000001, lambda[i] - stepSize * change);
         }
         return lambda;
     }

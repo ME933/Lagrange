@@ -60,7 +60,7 @@ public class Solver {
         }
         else if (solveMode.equals("Compare")) {
             this.defaultSolve(MIPGap);
-//            this.Lagrange();
+            this.Lagrange();
         }
     }
 
@@ -112,9 +112,14 @@ public class Solver {
 
     //添加冲突约束
     private void addResCon() throws IloException {
-        for (int i = 0; i < conNum; i++) {
-            ArrayList<Integer> conList = comData.getConArc(i);
-//            resCon[i] = cplex.addLe(cplex.sum(x[conPair[0]], x[conPair[1]]),1);
+        ArrayList<ArrayList<Integer>> conArcSet = comData.getConArcSet();
+        for (int i = 0; i < conArcSet.size(); i++){
+            ArrayList<Integer> conArc = conArcSet.get(i);
+            IloLinearNumExpr lhs = cplex.linearNumExpr();
+                for (int arcIndex: conArc) {
+                    lhs.addTerm(1, x[arcIndex]);
+                }
+            resCon[i] = cplex.addLe(lhs,1);
             resCon[i].setName("resCon_" + i);
         }
     }
@@ -160,9 +165,45 @@ public class Solver {
             cplex.setParam(IloCplex.Param.Emphasis.MIP, 1);
         }
         cplex.setParam (IloCplex.Param.MIP.Tolerances.MIPGap,MIPGap);
-        comData = null;
         cplex.solve();
+        HashMap<Integer, ArrayList<Integer>> virStar = comData.getVirStar();
+        int countY1 = 0;
+        int countY2 = 0;
+        for (int yIndex: virStar.keySet()) {
+            ArrayList<Integer> yList = virStar.get(yIndex);
+            int count = 0;
+            for (int virY: yList) {
+//                System.out.println(cplex.getValue(y[virY]));
+                int yValue = (int) cplex.getValue(y[virY]);
+                count += yValue;
+                if(count >= 1){
+                    countY1 += 1;
+                    break;
+                }
+            }
+        }
+        for (int yIndex: virStar.keySet()) {
+            ArrayList<Integer> yList = virStar.get(yIndex);
+            int count = 0;
+            for (int virY: yList) {
+//                System.out.println(cplex.getValue(y[virY]));
+                int yValue = (int) cplex.getValue(y[virY]);
+                count += yValue;
+                if(count >= 2){
+                    countY2 += 1;
+                    break;
+                }
+            }
+        }
+        int countX = 0;
+        for (int i = 0; i < arcNum; i++){
+            int xValue = (int) cplex.getValue(x[i]);
+            countX += xValue;
+        }
+        System.out.println("覆盖卫星数：" + countY1);
+        System.out.println("完成卫星数：" + countY2);
         System.out.println("目标函数值：" + cplex.getObjValue());
+        System.out.println("选用弧段数：" + countX);
     }
 
     public void Lagrange() throws IloException {
@@ -223,7 +264,7 @@ public class Solver {
             double transLB = 0;
             //若满足卫星弧段约束，则判断后更新下界
             timeTool.addStartTime("修复解");
-
+            int arcNum = 0;
             if(dualProblem.verifySolution()){
                 if (LB > bestLB) {
                     bestLB = LB; // 更新最优下界
@@ -234,6 +275,7 @@ public class Solver {
             else {
                 Solve.Solution solution = new Solve.Solution();
                 transLB = solution.getObjectiveValue(xMap,comData.getMapStarArc(),task);
+                arcNum = solution.getArcNum(xMap);
 //                double[] transY = solution.getObjectiveValueVector(xMap, comData.getMapStarArc(),task);
 //                //计算次梯度
 //                dualProblem.computeSubGradients(xMap, transY, task);
@@ -243,7 +285,7 @@ public class Solver {
             }
             timeTool.addEndTime("修复解");
             drawChart.addData(transLB,UB);
-            System.out.println("Iteration " + iter + ": LB=" + LB + ", fixedLB=" + transLB + ", UB=" + UB + ", bestLB=" + bestLB + ", bestUB=" + bestUB);
+            System.out.println("Iteration " + iter + ": LB=" + LB + ", fixedLB=" + transLB + ", UB=" + UB + ", bestLB=" + bestLB + ", bestUB=" + bestUB + ", selectedArc=" + arcNum);
             if (UB < bestUB) {
                 bestUB = UB; // 更新最优上界
             }
@@ -267,8 +309,8 @@ public class Solver {
             xMap = subProblem.getVariable(xMap);
         }
         if (solution.verifySolution(comData, xMap)){
-//            System.out.println("松弛解满足原问题约束,目标函数值:"+solution.getObjectiveValue(xMap,comData.getMapStarArc(),task));
-//            System.out.println("选用弧段数量:"+solution.getArcNum(xMap));
+            System.out.println("松弛解满足原问题约束,目标函数值:"+solution.getObjectiveValue(xMap,comData.getMapStarArc(),task));
+            System.out.println("选用弧段数量:"+solution.getArcNum(xMap));
         }else {
             System.out.println("松弛解不满足原问题约束。");
             HashMap<Integer,Double> transX = solution.transSolution(comData, xMap);

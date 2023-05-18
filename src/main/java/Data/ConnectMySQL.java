@@ -36,10 +36,14 @@ public class ConnectMySQL {
             //1311、1312、1313、1314、1318、1319、1321、1322、1323、1325、1327、1328
             stmt = conn.createStatement();
             stmt = conn.createStatement();
+            String dataSet = "499";
+//            String dataTable = "497_1200";
+            String dataTable = "or.xqcl_sub_require";
+            String equList = "(1311,1312,1313,1314,1318,1319)";
             //分别查找卫星、装备、弧段
-            String sqlStar = "select SAT_CODE from or.xqcl_sub_require where REQUIRE_ID = 499 and exists(select IdSat from or.zbdd_data_arcs where IdSat in (SELECT SAT_CODE FROM or.xqcl_sub_require where REQUIRE_ID=499) and IdDev in (1311,1312,1313,1314,1318,1319) and ID not in (select ARCID from or.zbdd_scheduling_plan_provisional) and or.xqcl_sub_require.SAT_CODE = or.zbdd_data_arcs.IdSat);";
+            String sqlStar = "select SAT_CODE from " + dataTable + " where REQUIRE_ID = " + dataSet +" and exists(select IdSat from or.zbdd_data_arcs where IdSat in (SELECT SAT_CODE FROM " + dataTable + " where REQUIRE_ID=" + dataSet + ") and IdDev in (1311,1312,1313,1314,1318,1319) and ID not in (select ARCID from or.zbdd_scheduling_plan_provisional) and " + dataTable + ".SAT_CODE = or.zbdd_data_arcs.IdSat);";
             String sqlEqu = "select DEVICECODE, CAPBILITY FROM or.zbdd_device_status_constraint where DEVICECODE in (1311,1312,1313,1314,1318,1319);";
-            String sqlArcs = "select IdSat, IdDev, StartTimeUtc, EndPtimeUtc, Mark, Rev, ID from or.zbdd_data_arcs where IdSat in (SELECT SAT_CODE FROM or.xqcl_sub_require where REQUIRE_ID=499) and IdDev in (1311,1312,1313,1314,1318,1319) and ID not in (select ARCID from or.zbdd_scheduling_plan_provisional);";
+            String sqlArcs = "select IdSat, IdDev, StartTimeUtc, EndPtimeUtc, Mark, Rev, ID from or.zbdd_data_arcs where IdSat in (SELECT SAT_CODE FROM " + dataTable + " where REQUIRE_ID=" + dataSet + ") and IdDev in (1311,1312,1313,1314,1318,1319) and ID not in (select ARCID from or.zbdd_scheduling_plan_provisional);";
 
             ResultSet rsStar  = stmt.executeQuery(sqlStar);
             // 展开结果集数据库

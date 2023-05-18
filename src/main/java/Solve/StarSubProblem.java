@@ -26,7 +26,7 @@ public class StarSubProblem {
     public double getRelaxValue(){
         double yValue = 0;
         for (int i = 0; i < lambda.length; i++) {
-            if(1 - task * lambda[i] >= 0){
+            if(1 -  task * lambda[i] >= 0){
                 yValue += 1 - lambda[i] * task;
             }
         }
