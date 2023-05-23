@@ -31,7 +31,8 @@ public class Data {
     HashMap<Integer,ArrayList<Integer>> mapArc;
 
     //弧段-时间
-    HashMap<Integer, Date[]> arcTime;
+    HashMap<Integer, Date[]> arcTimeRange;
+    HashMap<Integer, Long> arcTime;
 
     //用户星-完全冲突弧段集
     ArrayList<ArrayList<Integer>> cliStarConf;
@@ -52,10 +53,10 @@ public class Data {
     private void loadData(){
         this.jobTime = new HashMap<>();
         this.starWeight = new HashMap<>();
-        jobTime.put(0, 569);
-        jobTime.put(1, 143);
-        jobTime.put(2, 72);
-        jobTime.put(3, 36);
+        jobTime.put(0, 34133);
+        jobTime.put(1, 8533);
+        jobTime.put(2, 4267);
+        jobTime.put(3, 2133);
         starWeight.put(0, 0.15);
         starWeight.put(1, 0.6);
         starWeight.put(2, 1.2);
@@ -77,6 +78,7 @@ public class Data {
         conStar = new ArrayList<>();
         arc = new ArrayList<>();
 
+        arcTimeRange = new HashMap<>();
         arcTime = new HashMap<>();
         mapCliStarArc = new HashMap<>();
         mapConStarArc = new HashMap<>();
@@ -124,8 +126,10 @@ public class Data {
 
             Date[] dateTime = new Date[2];
             dateTime[0] = df.parse(formatter.format(startDateTime));
-            dateTime[0] = df.parse(formatter.format(endDateTime));
-            arcTime.put(i, dateTime);
+            dateTime[1] = df.parse(formatter.format(endDateTime));
+            long timeMinute = dateTime[1].getTime() - dateTime[0].getTime();
+            arcTimeRange.put(i, dateTime);
+            arcTime.put(i, timeMinute);
 
             mapCliStarArc.get(cliStarId).add(i);
             mapConStarArc.get(conStarId).add(i);
@@ -147,16 +151,16 @@ public class Data {
         TimeLine conTimeLine = new TimeLine();
 
         for (int i = 0; i < cliStar.size(); i++) {
-            cliStarTimeLine.insertArc(i, mapCliStarArc, arcTime);
+            cliStarTimeLine.insertArc(i, mapCliStarArc, arcTimeRange);
         }
         cliStarConf = cliStarTimeLine.searchTimeline();
         
         for (int i = 0; i < conStar.size(); i++) {
-            conStarTimeLine.insertArc(i, mapConStarArc, arcTime);
+            conStarTimeLine.insertArc(i, mapConStarArc, arcTimeRange);
         }
         cliStarConf = conStarTimeLine.searchTimeline();
 
-        conTimeLine.insertArc(0, mapArc, arcTime);
+        conTimeLine.insertArc(0, mapArc, arcTimeRange);
         conf = conTimeLine.searchTimeline();
     }
 
