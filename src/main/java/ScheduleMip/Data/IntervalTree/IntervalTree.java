@@ -1,4 +1,4 @@
-package IntervalTree;
+package ScheduleMip.Data.IntervalTree;
 
 import java.util.*;
 
@@ -155,7 +155,7 @@ public class IntervalTree<T extends Comparable<? super T>> extends AbstractSet<I
         if (root == null) {
             return Collections.emptyIterator();
         } else {
-            final TreeNode.TreeNodeIterator it = root.iterator();
+            final IntervalTree.TreeNode.TreeNodeIterator it = root.iterator();
             return new Iterator<Interval<T>>() {
                 @Override
                 public void remove() {
